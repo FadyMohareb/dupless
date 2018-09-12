@@ -24,10 +24,12 @@ HetDect workflow is composed of two main steps:
 ## Input Files:
 
 **Required**
+
 - The assembly in fasta format.
 - A bed file with the coverage value for each base of the assembly. You can produce such a file by aligning reads to the assembly and then run "bedtools genomecov" on the resulting bam.
 
 **Optional**
+
 - A bed file contaning the Gaps in the assembly. If provided, they will be represented as grey bars on the graphs.
 - If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication.
 
@@ -38,6 +40,7 @@ HetDect workflow is composed of two main steps:
 	python HetDect.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
 
 **Options:**
+
      -t/--nThreads               The number of threads (default 20)
      -o/--out_folder             The output folder (default is the current directory).
 
@@ -53,6 +56,7 @@ HetDect workflow is composed of two main steps:
 
 
 **Other:**
+
 	-s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:
                                      python HetDect.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
 
@@ -62,7 +66,6 @@ HetDect workflow is composed of two main steps:
 
 ## Output
 
-- The script will output:
 - Two fasta files containing the different versions of the duplications.
 - A bed file with the identified heterozygous regions.
 - The results of the blast between the heterozygous regions.
