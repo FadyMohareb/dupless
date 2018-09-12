@@ -1,45 +1,71 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+## HetDect: A tool to remove assembly heterozygous duplication based on coverage.
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
+Most of the currently available assemblers are designed to work on highly inbred, homozygous species and treats differing haplotypes as separate contigs.  
+However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly. 
+For these cases, we created “HetDect”, a tool capable of quickly detecting and removing the duplicated regions issued from heterozygosity.
 
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
-
----
-
-## Edit a file
-
-You’ll start by editing this README file to learn how to edit a file in Bitbucket.
-
-1. Click **Source** on the left side.
-2. Click the README.md link from the list of files.
-3. Click the **Edit** button.
-4. Delete the following text: *Delete this line to make a change to the README from Bitbucket.*
-5. After making your change, click **Commit** and then **Commit** again in the dialog. The commit page will open and you’ll see the change you just made.
-6. Go back to the **Source** page.
+HetDect workflow is composed of two main steps:
+1.	The detection, based on the coverage, of heterozygous regions in the assembly.
+2.	The detection of duplicates among the heterozygous regions, based on their sequences similarity (using blast).
 
 ---
 
-## Create a file
+## Dependencies
 
-Next, you’ll add a new file to this repository.
+- python
+- The following python packages: numpy, pandas, subprocess, Bio, matplotlib.pyplot, getopt.
 
-1. Click the **New file** button at the top of the **Source** page.
-2. Give the file a filename of **contributors.txt**.
-3. Enter your name in the empty file space.
-4. Click **Commit** and then **Commit** again in the dialog.
-5. Go back to the **Source** page.
-
-Before you move on, go ahead and explore the repository. You've already seen the **Source** page, but check out the **Commits**, **Branches**, and **Settings** pages.
+- **samtools v1.9** or higher
+- **bedtools v2.27.1** or higher
+- **blastn v2.6.0+** or higher
 
 ---
 
-## Clone a repository
+## Input Files:
 
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
+**Required**
+ - The assembly in fasta format.
+ - A bed file with the coverage value for each base of the assembly. 
+   You can produce such a file by aligning reads to the assembly and then run "bedtools genomecov" on the resulting bam.
 
-1. You’ll see the clone button under the **Source** heading. Click that button.
-2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
-3. When you see the **Clone New** dialog in SourceTree, update the destination path and name if you’d like to and then click **Clone**.
-4. Open the directory you just created to see your repository’s files.
+**Optional**
+ - A bed file contaning the Gaps in the assembly. If provided, they will be represented as grey bars on the graphs.
+ - If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication.
 
-Now that you're more familiar with your Bitbucket repository, go ahead and add a new file locally. You can [push your change back to Bitbucket with SourceTree](https://confluence.atlassian.com/x/iqyBMg), or you can [add, commit,](https://confluence.atlassian.com/x/8QhODQ) and [push from the command line](https://confluence.atlassian.com/x/NQ0zDQ).
+---
+
+## Usage
+
+python HetDect.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+
+**Options:**
+     -t/--nThreads               The number of threads (default 20)
+     -o/--out_folder             The output folder (default is the current directory).
+
+     -b/--bed_cov                The bed file containing the coverage for each position (can be generated with bedtools genomecov).
+     -a/--assembly               The assembly corresponding to the bed coverage in fasta format.
+     -g/--bed_gaps               A bed file contaning the gaps along the genome. If given, the graphs will contain a grey background where the gaps are.
+     
+     -w/--window_size            The size of the window. The value of the read coverage will be the median of the values inside each window (default: 1000).
+     -c/--expected_cov           The expected read coverage along the genome. The homozygosity / heterozygosity will be determined based on this value.
+                                 If no value is given, it will be based on the mode of the coverage distribution (not reliable if high heterozygosity).
+     -i/--blast_identity         The minimum percentage of identity between the het region and the blast hit to consider it valid (default: 90, range 0 to 100).
+     -l/--blast_length           The minimum length for the blast hit to be considered as valid (default=0).
+
+
+**Other:**
+     -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:
+                                     python HetDect.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+
+     -h/--help                   Print the usage and help.
+
+---
+
+## Output
+
+The script will output:
+ - Two fasta files containing the different versions of the duplications.
+ - A bed file with the identified heterozygous regions.
+ - The results of the blast between the heterozygous regions.
+ - Graphs of the coverage along each sequences of the assembly.
+ - A histogram of the coverage distribution.
