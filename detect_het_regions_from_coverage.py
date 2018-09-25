@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import subprocess
+from multiprocessing import Pool
 
 #==============================
 #       Functions
@@ -96,7 +97,6 @@ def get_windows_medians_contig(contig_df, expected_cov, window_size):
     """
     # Getting the last position of the contig and the median coverage on this contig (to detect het regions, we assume that homozygous is the dominant)
     last_contig_position = contig_df['position'].iloc[-1] - 1
-    print("Length= "+str(last_contig_position))
 
     previous_position = 0
     current_position = 0
@@ -188,49 +188,81 @@ def detect_genome_mode(bed_dataframe):
 
 
 
+def process_contig(contig_name):
+    global BED_DF
+    global GENOME_MODE
+    global WINDOW_SIZE
+    global OUTPUT_FOLDER
+    global GAPS_DF
+
+    contig_df = BED_DF[BED_DF['contig'].isin([contig_name])]
+    starts, stops, window_medians, classifications = get_windows_medians_contig(contig_df, GENOME_MODE, WINDOW_SIZE)
+    create_plot_coverage(starts, window_medians, classifications, GENOME_MODE, contig_name, GAPS_DF, WINDOW_SIZE, OUTPUT_FOLDER)
+    create_bed_het_regions(contig_name, starts, stops, classifications, OUTPUT_FOLDER)
+
+
+
+BED_DF = pd.DataFrame()
+GENOME_MODE = 0
+WINDOW_SIZE = 0
+OUTPUT_FOLDER = 0
+GAPS_DF = pd.DataFrame()
 #==========================================
 # "Main" function that uses the other ones
 #==========================================
-def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_folder):
+def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_folder, nbThreads):
     """
     Reads the coverage bed file and produces bed and graphs of the heterozygous regions.
     Returns:
         The name of the bed files containing all the heterozygous regions.
     """
-    gaps_dataframe = pd.DataFrame()
+    global BED_DF
+    global GENOME_MODE
+    global WINDOW_SIZE
+    global OUTPUT_FOLDER
+    global GAPS_DF
+
+    GENOME_MODE = genome_mode
+    WINDOW_SIZE = window_size
+    OUTPUT_FOLDER = output_folder
+
+    #GAPS_DF = pd.DataFrame()
     if(gaps_bed != None):
-        gaps_dataframe = pd.read_csv(gaps_bed, sep='\t', index_col=False, names=['contig', 'start', 'stop'], header=None)
+        GAPS_DF = pd.read_csv(gaps_bed, sep='\t', index_col=False, names=['contig', 'start', 'stop'], header=None)
 
     print("Reading coverage bed, this can take a while...")
-    bed_dataframe = pd.read_csv(coverage_bed, sep='\t', index_col=False, names=['contig', 'position', 'coverage'], header=None)
+    BED_DF = pd.read_csv(coverage_bed, sep='\t', index_col=False, names=['contig', 'position', 'coverage'], header=None)
     print("Done !")
 
     # If user mode not set by user, then compute it
     # Use the mode from the whole genome to avoid wrong calculation on mostly het scaffolds.
-    if(genome_mode == None):
-        genome_mode = detect_genome_mode(bed_dataframe)
+    if(GENOME_MODE == None):
+        GENOME_MODE = detect_genome_mode(BED_DF)
 
     # Creates the histogram of the coverage, to visually check the chosen expected coverage (genome_mode)
-    bed_DF_hist = bed_dataframe[(bed_dataframe['coverage'] <= genome_mode*2) & (bed_dataframe['coverage'] != 0)]
-    coverage_histogram(bed_DF_hist['coverage'], genome_mode, output_folder)
+    bed_DF_hist = BED_DF[(BED_DF['coverage'] <= GENOME_MODE*2) & (BED_DF['coverage'] != 0)]
+    coverage_histogram(bed_DF_hist['coverage'], GENOME_MODE, OUTPUT_FOLDER)
 
-    print("The mode is :"+str(genome_mode))
+    print("The mode is :"+str(GENOME_MODE))
 
-    # Then process each scaffold => get regions of het and output a figure and a bed.
-    for contig_name in bed_dataframe['contig'].unique():
-        # We extract the contig information from the bed file. /!\ the dataframe for the contig subset still uses the row index from the original dataframe.
-        print("processing contig: "+contig_name)
-        contig_df = bed_dataframe[bed_dataframe['contig'].isin([contig_name])]
+    print("Processing the contigs... (Creating graphs and bed files)")
+    # Multiprocessing, we process contigs in parallel
+    try:
+        pool = Pool(nbThreads)
+        pool.map(process_contig, BED_DF['contig'].unique())
+    except:
+        print(traceback.format_exc())
+        sys.exit(1)
+    # This ensure that the subprocesses are killed even if there is an error
+    finally:
+        pool.close()
+        pool.join()
+    print("Contigs processed !")
 
-        starts, stops, window_medians, classifications = get_windows_medians_contig(contig_df, genome_mode, window_size)
-        create_plot_coverage(starts, window_medians, classifications, genome_mode, contig_name, gaps_dataframe, window_size, output_folder)
-        create_bed_het_regions(contig_name, starts, stops, classifications, output_folder)
-
-
-    concat_bed_name = output_folder+"/Heterozygous_regions_ALL.bed"
+    concat_bed_name = OUTPUT_FOLDER+"/Heterozygous_regions_ALL.bed"
     print("Concatenating the bed files to "+concat_bed_name+" ...")
     with open(concat_bed_name, "w") as concat_bed:
-        process = subprocess.Popen("cat "+output_folder+"/individual_beds/*.bed", shell = True, stdout=concat_bed)
+        process = subprocess.Popen("cat "+OUTPUT_FOLDER+"/individual_beds/*.bed", shell = True, stdout=concat_bed)
         process.wait()
-    print("Done !")
+    print("Bed files concatenated to: "+concat_bed)
     return concat_bed_name

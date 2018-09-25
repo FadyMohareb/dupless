@@ -2,22 +2,20 @@
 
 # TO DO :
 #       Add legend for plots
-#       Do a better expected coverage calculation : detect two peaks and select one that is freq*2 from the other
-#       Remove previous folders: /!\ individual beds are APPENDED
+#       Do a better expected coverage calculation : detect two (add option for ploidy ?) peaks and select one that is freq*2 from the other
+#       Remove previous folders: /!\ individual beds are APPENDED if ran again
 
-# /!\ Warning !!! Values next to gaps are "dragged down" by the 0 coverage of the gaps and could be misidentified as heterozygotes.
-
-# Speed up the graph construction
+# /!\ Values next to gaps are "dragged down" by the 0 coverage of the gaps and could be misidentified as heterozygotes.
 
 # /!\ filter_blast_results only woks if the scaffold is named scaffoldname_start_stop
 
-# Realign reads to duplicated regions to try to find misasselmblies ?
+# Realign reads to duplicated regions to try to find misassemblies ?
 
 # Dependencies:
 # bedtools
 # samtools 1.9 or higher
 # blastn
-# pandas, numpy, matplotlib
+# pandas, numpy, matplotlib, multiprocessing
 
 import getopt
 import subprocess
@@ -185,7 +183,7 @@ for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/
 
 if not skip_het_dect:
     # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
-    het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder)
+    het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder, nbThreads)
 
 if check_file_with_option(het_bed, "-s/--skip_het_dect"):
     # Launch pairwise blast comparison between the detected heterozygous regions to remove duplication

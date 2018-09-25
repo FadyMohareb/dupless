@@ -106,7 +106,7 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, HetDec
     multi_processes(makeBlastDB_cmds)
     multi_processes(megablast_cmds)
     multi_processes(remove_cmds)
-    print("Done !")
+    print("Blast done !")
 
     # Concatenate the blast results and filter them by identity% and length.
     concat_blasts_name = output_folder+"/All_Blasts.tab"
@@ -114,4 +114,4 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, HetDec
     with open(concat_blasts_name, "w") as concat_blasts:
         process = Popen(["find", output_folder+"/individual_blasts/", "-maxdepth", "1", "-type", "f", "-exec", "cat", "{}", "+"], stdout=concat_blasts)
         process.wait()
-    print("Done !")
+   print("Bed files concatenated to: "+concat_blasts_name)

@@ -1,7 +1,6 @@
 ## HetDect: A tool to remove assembly heterozygous duplication based on coverage.
 
-Most of the currently available assemblers are designed to work on highly inbred, homozygous species and treats differing haplotypes as separate contigs.  
-However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly. 
+Most of the currently available assemblers are designed to work on highly inbred, homozygous species and treats differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly. 
 For these cases, we created “HetDect”, a tool capable of quickly detecting and removing the duplicated regions issued from heterozygosity.
 
 HetDect workflow is composed of two main steps:
@@ -13,7 +12,7 @@ HetDect workflow is composed of two main steps:
 ## Dependencies
 
 - python
-- The following python packages: numpy, pandas, subprocess, Bio, matplotlib.pyplot, getopt.
+- The following python packages: numpy, pandas, subprocess, Bio, matplotlib.pyplot, getopt, multiprocessing.
 
 - **samtools v1.9** or higher
 - **bedtools v2.27.1** or higher
