@@ -73,6 +73,14 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
         plt.title(str(contig_name))
         plt.ylim(0,contig_coverage*2)
 
+        #Create custom artists
+        hetArtist = plt.Line2D((0,1),(0,0), color='#d62728', marker='o')
+        homArtist = plt.Line2D((0,1),(0,0), color='#5ac739', marker='o')
+        outArtist = plt.Line2D((0,1),(0,0), color = '#440a7f', marker='o')
+
+        #Create legend from custom artist/label lists
+        plt.legend([hetArtist,homArtist, outArtist],['Heterozygous', 'Homozygous', 'Outlier'])
+
         if(gaps_dataframe.empty == False):
             gaps_df_contig = gaps_dataframe[gaps_dataframe['contig'].isin([contig_name])]
             if(len(gaps_df_contig['contig']) > 0):
@@ -232,7 +240,7 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
 
     print("Reading coverage bed, this can take a while...")
     BED_DF = pd.read_csv(coverage_bed, sep='\t', index_col=False, names=['contig', 'position', 'coverage'], header=None)
-    print("Done !")
+    print("Done !\n")
 
     # If user mode not set by user, then compute it
     # Use the mode from the whole genome to avoid wrong calculation on mostly het scaffolds.
@@ -257,12 +265,12 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     finally:
         pool.close()
         pool.join()
-    print("Contigs processed !")
+    print("Contigs processed !\n")
 
     concat_bed_name = OUTPUT_FOLDER+"/Heterozygous_regions_ALL.bed"
     print("Concatenating the bed files to "+concat_bed_name+" ...")
     with open(concat_bed_name, "w") as concat_bed:
         process = subprocess.Popen("cat "+OUTPUT_FOLDER+"/individual_beds/*.bed", shell = True, stdout=concat_bed)
         process.wait()
-    print("Bed files concatenated to: "+concat_bed)
+    print("Bed files concatenated to: "+concat_bed_name+"\n")
     return concat_bed_name

@@ -1,7 +1,7 @@
 #!/bin/python
 
 # TO DO :
-#       Add legend for plots
+#       Add legend for coverage and coverage/2 lines on plot
 #       Do a better expected coverage calculation : detect two (add option for ploidy ?) peaks and select one that is freq*2 from the other
 #       Remove previous folders: /!\ individual beds are APPENDED if ran again
 
@@ -74,9 +74,6 @@ def make_haplotype(hapname, assembly_name, bedname):
     From an assembly fasta and a bed of regions to remove, creates an haplotype fasta.
     Uses "bedtools maskfasta" and "sed" to remove the regions.
     """
-    # Creates fasta file from the filtered blast results.
-    print("Generating the haplotype fasta files from the blast results...")
-
     cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", hapname, "-bed", bedname, "-mc", "$"]
     print(" ".join(cmd_mask))
     process = subprocess.Popen(cmd_mask, stdout=subprocess.PIPE)
@@ -193,14 +190,15 @@ if check_file_with_option(het_bed, "-s/--skip_het_dect"):
     print(" ".join(cmd_filter))
     process = subprocess.Popen(cmd_filter, stdout=subprocess.PIPE)
     process.wait()
-    print("Blast filtered !")
+    print("Blast filtered !\n")
 
     # Create the haplotype from the bed files resulting from blast filtration.
+    print("Generating the haplotype fasta files from the blast results...")
     make_haplotype(output_folder+"/haplotypes/haplotype1.fasta", assembly_name, output_folder+"/toRemoveFromhap1.bed")
     make_haplotype(output_folder+"/haplotypes/haplotype2.fasta", assembly_name, output_folder+"/toRemoveFromhap2.bed")
-    print("Haplotypes created !")
+    print("Haplotypes created !\n")
 else:
     usage()
     sys.exit(2)
 
-print("Done !")
+print("Done !\n")

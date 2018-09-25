@@ -129,37 +129,38 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, HetDec
     multi_processes(makeBlastDB_cmds)
     multi_processes(megablast_cmds)
     multi_processes(remove_cmds)
-    print("Blast done !")
+    print("Blast done !\n")
 
     # Concatenate the blast results and filter them by identity% and length.
-    concat_blasts_name = output_folder+"/All_Blasts_region_coord.tab"
+    region_blasts_name = output_folder+"/All_Blasts_region_coord.tab"
     scaffold_coord_blasts_name = output_folder+"/All_Blasts_scaffolds_coord.tab"
   
-    print("Concatenating the blast results to "+concat_blasts_name+" ...")
-    with open(concat_blasts_name, "r+") as concat_blasts_regions:
-        process = Popen(["find", output_folder+"/individual_blasts/", "-maxdepth", "1", "-type", "f", "-exec", "cat", "{}", "+"], stdout=concat_blasts_regions)
+    print("Concatenating the blast results to "+region_blasts_name+" ...")
+    with open(region_blasts_name, "w") as blasts_regions:
+        process = Popen(["find", output_folder+"/individual_blasts/", "-maxdepth", "1", "-type", "f", "-exec", "cat", "{}", "+"], stdout=blasts_regions)
         process.wait()
-        print("Blast files concatenated to: "+concat_blasts_name)
+        print("Blast files concatenated to: "+region_blasts_name)
 
         print("Converting Blast results in region coordinates to scaffold coordinates...")
-        with open(scaffold_coord_blasts_name, "w") as blasts_scaffolds:
-            for blast in concat_blasts_regions:
-                tabs = blast.split("\t")
-                # The QUERY should always be "start stop", but if there is a inverted alignment, the SUBJECT can be "stop   start".
-                # So we get the start by taking the min and the stop with the max
-                query_start = int(tabs[6])
-                query_end = int(tabs[7])
+        with open(region_blasts_name, "r") as blasts_regions:
+            with open(scaffold_coord_blasts_name, "w") as blasts_scaffolds:
+                for blast in blasts_regions:
+                    tabs = blast.split("\t")
+                    # The QUERY should always be "start stop", but if there is a inverted alignment, the SUBJECT can be "stop   start".
+                    # So we get the start by taking the min and the stop with the max
+                    query_start = int(tabs[6])
+                    query_end = int(tabs[7])
 
-                subject_start = min(int(tabs[8]), int(tabs[9]))
-                subject_end = max(int(tabs[8]), int(tabs[9]))
+                    subject_start = min(int(tabs[8]), int(tabs[9]))
+                    subject_end = max(int(tabs[8]), int(tabs[9]))
 
-                # We need to get the original positions, since "query_start" and "query_end" correspond to the het regions positions and not the scaffold position.
-                q_scaffold_name, q_scaffold_start, q_scaffold_end = get_assembly_coordinates_from_blast_results(tabs[0],query_start, query_end)
-                s_scaffold_name, s_scaffold_start, s_scaffold_end = get_assembly_coordinates_from_blast_results(tabs[1], subject_start, subject_end)
+                    # We need to get the original positions, since "query_start" and "query_end" correspond to the het regions positions and not the scaffold position.
+                    q_scaffold_name, q_scaffold_start, q_scaffold_end = get_assembly_coordinates_from_blast_results(tabs[0],query_start, query_end)
+                    s_scaffold_name, s_scaffold_start, s_scaffold_end = get_assembly_coordinates_from_blast_results(tabs[1], subject_start, subject_end)
 
-                # We want to keep the order of start and end for the subject if there is an reverse alignment.
-                if(int(tabs[8]) < int(tabs[9])):
-                    blasts_scaffolds.write(q_scaffold_name+"\t"+s_scaffold_name+"\t"+tabs[2]+"\t"+tabs[3]+"\t"+tabs[4]+"\t"+tabs[5]+"\t"+q_scaffold_start+"\t"+q_scaffold_end+"\t"+subject_start+"\t"+subject_end+"\t"+tabs[10]+"\t"+tabs[11])
-                else:
-                    blasts_scaffolds.write(q_scaffold_name+"\t"+s_scaffold_name+"\t"+tabs[2]+"\t"+tabs[3]+"\t"+tabs[4]+"\t"+tabs[5]+"\t"+q_scaffold_start+"\t"+q_scaffold_end+"\t"+subject_end+"\t"+subject_start+"\t"+tabs[10]+"\t"+tabs[11])
-    print("Blast files with scaffold coordinates written to: "+scaffold_coord_blasts_name)
+                    # We want to keep the order of start and end for the subject if there is an reverse alignment.
+                    if(int(tabs[8]) < int(tabs[9])):
+                        blasts_scaffolds.write(q_scaffold_name+"\t"+s_scaffold_name+"\t"+tabs[2]+"\t"+tabs[3]+"\t"+tabs[4]+"\t"+tabs[5]+"\t"+str(q_scaffold_start)+"\t"+str(q_scaffold_end)+"\t"+str(s_scaffold_start)+"\t"+str(s_scaffold_end)+"\t"+tabs[10]+"\t"+tabs[11])
+                    else:
+                        blasts_scaffolds.write(q_scaffold_name+"\t"+s_scaffold_name+"\t"+tabs[2]+"\t"+tabs[3]+"\t"+tabs[4]+"\t"+tabs[5]+"\t"+str(q_scaffold_start)+"\t"+str(q_scaffold_end)+"\t"+str(s_scaffold_end)+"\t"+str(s_scaffold_start)+"\t"+tabs[10]+"\t"+tabs[11])
+    print("Blast files with scaffold coordinates written to: "+scaffold_coord_blasts_name+"\n")

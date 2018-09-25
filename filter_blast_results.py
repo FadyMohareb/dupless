@@ -60,7 +60,6 @@ if not(file_ok):
 #=================================================================
 print("Creating dictionnary for the assembly...")
 assembly_dict = SeqIO.index(assembly, "fasta")
-print("Done !")
 
 if not os.path.isdir(output_folder):
     print("Creating the output directory...")
@@ -97,8 +96,8 @@ with open(blast_filename, "r") as all_blasts:
                 # If "S1 S2" is a valid blast hit, we don't want to eliminate "S2 S1" later (double removal),
                 # So we add the reversed pair "S2_start_stop;S1_start_stop" in to_keep
                 # We add the start and stop in case there are several hits between different regions on the same two scaffolds.
-                region1 = query_name+"_"+query_start+"_"+query_end
-                region2 = subject_name+"_"+subject_start+"_"+subject_end
+                region1 = query_name+"_"+str(query_start)+"_"+str(query_end)
+                region2 = subject_name+"_"+str(subject_start)+"_"+str(subject_end)
                 pair = region1+";"+region2
                 reversed_pair = region2+";"+region1
 
@@ -113,4 +112,4 @@ with open(blast_filename, "r") as all_blasts:
                         hap2.write(query_name+"\t"+str(query_start)+"\t"+str(query_end)+"\n")
 
                     to_keep.append(reversed_pair)
-print("Done !")
+print("Done !\n")
