@@ -7,8 +7,6 @@
 
 # /!\ Values next to gaps are "dragged down" by the 0 coverage of the gaps and could be misidentified as heterozygotes.
 
-# /!\ filter_blast_results only woks if the scaffold is named scaffoldname_start_stop
-
 # Realign reads to duplicated regions to try to find misassemblies ?
 
 # Dependencies:
@@ -191,7 +189,7 @@ if check_file_with_option(het_bed, "-s/--skip_het_dect"):
 
     # Filter the blasts by identity and length.
     print("Filtering blast results with "+str(blast_identity_threshold)+"% identity and min length of "+str(blast_length_threshold)+" bp :")
-    cmd_filter = ["python", HetDect_folder+"/filter_blast_results.py", output_folder+"/All_Blasts.tab", str(blast_identity_threshold), str(blast_length_threshold), assembly_name, output_folder]
+    cmd_filter = ["python", HetDect_folder+"/filter_blast_results.py", output_folder+"/All_Blasts_scaffolds_coord.tab", str(blast_identity_threshold), str(blast_length_threshold), assembly_name, output_folder]
     print(" ".join(cmd_filter))
     process = subprocess.Popen(cmd_filter, stdout=subprocess.PIPE)
     process.wait()
