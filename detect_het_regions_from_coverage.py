@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 import subprocess
 from multiprocessing import Pool
+from subprocess import call, Popen, PIPE
 
 #==============================
 #       Functions

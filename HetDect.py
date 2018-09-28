@@ -74,14 +74,25 @@ def make_haplotype(hapname, assembly_name, bedname):
     From an assembly fasta and a bed of regions to remove, creates an haplotype fasta.
     Uses "bedtools maskfasta" and "sed" to remove the regions.
     """
+    hapname_oneLine = hapname+"_oneLine.fasta"
+
     cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", hapname, "-bed", bedname, "-mc", "$"]
     print(" ".join(cmd_mask))
     process = subprocess.Popen(cmd_mask, stdout=subprocess.PIPE)
     process.wait()
 
-    cmd_sed = "sed -i 's/\$//g' "+hapname
+    # Transform to one line to avoid empty lines after sed step
+    cmd_awk = "awk '/^>/ {printf(\"\n%s\n\",$0);next; } { printf(\"%s\",$0);}  END {printf(\"\n\");}' < "+hapname+" > "+hapname_oneLine # From https://www.biostars.org/p/9262/
+    print(cmd_awk)
+    process = subprocess.Popen(cmd_awk, shell=True, stdout=subprocess.PIPE)
+    process.wait()
+
+    cmd_sed = "sed -i 's/\$//g' "+hapname_oneLine
     print(cmd_sed)
     process = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
+    process.wait()
+
+    process(["mv", hapname_oneLine, hapname])
     process.wait()
 
     print("Haplotype generated in "+hapname)
