@@ -20,6 +20,9 @@ import subprocess
 import sys
 import os
 
+import Bio.SeqIO as SeqIO
+from Bio.SeqIO import FastaIO
+
 import detect_het_regions_from_coverage as dh
 import detect_duplicates_from_het_regions as dd
 
@@ -69,30 +72,31 @@ def check_file_with_option(filename, option):
     return file_ok
 
 
-def make_haplotype(hapname, assembly_name, bedname):
+def make_haplotype(hapname, assembly_name, bedname, output_folder):
     """
     From an assembly fasta and a bed of regions to remove, creates an haplotype fasta.
     Uses "bedtools maskfasta" and "sed" to remove the regions.
     """
-    hapname_oneLine = hapname+"_oneLine.fasta"
+    fasta_masked = output_folder+"haplotypes/temp_masked.fasta"
+    fasta_masked_oneLine = output_folder+"haplotypes/temp_masked_oneLine.fasta"
 
-    cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", hapname, "-bed", bedname, "-mc", "$"]
+    cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", fasta_masked, "-bed", bedname, "-mc", "$"]
     print(" ".join(cmd_mask))
     process = subprocess.Popen(cmd_mask, stdout=subprocess.PIPE)
     process.wait()
 
+    #masked_oneLine = FastaIO.FastaWriter(fasta_masked_oneLine, wrap=None)
     # Transform to one line to avoid empty lines after sed step
-    cmd_awk = "awk '/^>/ {printf(\"\n%s\n\",$0);next; } { printf(\"%s\",$0);}  END {printf(\"\n\");}' < "+hapname+" > "+hapname_oneLine # From https://www.biostars.org/p/9262/
-    print(cmd_awk)
-    process = subprocess.Popen(cmd_awk, shell=True, stdout=subprocess.PIPE)
-    process.wait()
+    masked_oneLine = FastaIO.FastaWriter(fasta_masked_oneLine, wrap=None)
+    for record in SeqIO.parse(fasta_masked, "fasta"):
+        masked_oneLine.write_record(record)
 
-    cmd_sed = "sed -i 's/\$//g' "+hapname_oneLine
+    cmd_sed = "sed -i 's/\$//g' "+fasta_masked_oneLine
     print(cmd_sed)
     process = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
     process.wait()
 
-    process(["mv", hapname_oneLine, hapname])
+    process = subprocess.Popen(["mv", fasta_masked_oneLine, hapname])
     process.wait()
 
     print("Haplotype generated in "+hapname)
@@ -205,8 +209,8 @@ if check_file_with_option(het_bed, "-s/--skip_het_dect"):
 
     # Create the haplotype from the bed files resulting from blast filtration.
     print("Generating the haplotype fasta files from the blast results...")
-    make_haplotype(output_folder+"/haplotypes/haplotype1.fasta", assembly_name, output_folder+"/toRemoveFromhap1.bed")
-    make_haplotype(output_folder+"/haplotypes/haplotype2.fasta", assembly_name, output_folder+"/toRemoveFromhap2.bed")
+    make_haplotype(output_folder+"/haplotypes/haplotype1.fasta", assembly_name, output_folder+"/toRemoveFromhap1.bed", output_folder)
+    make_haplotype(output_folder+"/haplotypes/haplotype2.fasta", assembly_name, output_folder+"/toRemoveFromhap2.bed", output_folder)
     print("Haplotypes created !\n")
 else:
     usage()
