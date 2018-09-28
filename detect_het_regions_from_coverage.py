@@ -270,7 +270,8 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     concat_bed_name = OUTPUT_FOLDER+"/Heterozygous_regions_ALL.bed"
     print("Concatenating the bed files to "+concat_bed_name+" ...")
     with open(concat_bed_name, "w") as concat_bed:
-        process = subprocess.Popen("cat "+OUTPUT_FOLDER+"/individual_beds/*.bed", shell = True, stdout=concat_bed)
+        # Combination of find and cat with "+" to avoid issue of "argument list too long"
+        process = Popen(["find", OUTPUT_FOLDER+"/individual_beds/", "-maxdepth", "1", "-type", "f", "-exec", "cat", "{}", "+"], stdout=concat_bed)
         process.wait()
     print("Bed files concatenated to: "+concat_bed_name+"\n")
     return concat_bed_name
