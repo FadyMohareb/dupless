@@ -85,18 +85,22 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     process = subprocess.Popen(cmd_mask, stdout=subprocess.PIPE)
     process.wait()
 
-    #masked_oneLine = FastaIO.FastaWriter(fasta_masked_oneLine, wrap=None)
-    # Transform to one line to avoid empty lines after sed step
-    masked_oneLine = FastaIO.FastaWriter(fasta_masked_oneLine, wrap=None)
-    for record in SeqIO.parse(fasta_masked, "fasta"):
-        masked_oneLine.write_record(record)
-
+    # Transform to single line fasta to avoid empty lines after sed step (fasta-2line format)
+    # Indeed if a region is longer than the fasta wrapping (usually 80 caracters), then the fasta will contain empty lines.
+    fasta_masked_handle = SeqIO.parse(fasta_masked, "fasta")
+    with open(fasta_masked_oneLine, "w") as fasta_masked_oneLine_handle:
+        for seq_record in fasta_masked_handle:
+            SeqIO.write(seq_record, fasta_masked_oneLine_handle, "fasta-2line")
+  
     cmd_sed = "sed -i 's/\$//g' "+fasta_masked_oneLine
     print(cmd_sed)
     process = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
     process.wait()
 
     process = subprocess.Popen(["mv", fasta_masked_oneLine, hapname])
+    process.wait()
+
+    process = subprocess.Popen(["rm", fasta_masked])
     process.wait()
 
     print("Haplotype generated in "+hapname)
