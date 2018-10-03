@@ -22,7 +22,7 @@ def get_lengths_fasta(fasta):
 
 
 
-def extract_and_blast(region, het_fasta, output_folder, HetDect_folder):
+def extract_and_blast(region, het_fasta, output_folder, BACH_folder):
     """
     Creates commands for blasting a region (format "name:start-stop") against all the other het regions (needs a fasta file with all the het regions "het fasta").
     Returns the commands (strings) to:
@@ -37,7 +37,7 @@ def extract_and_blast(region, het_fasta, output_folder, HetDect_folder):
     # We remove the sequence from the list of het sequences to avoid self hit with blast.
     filtered_fasta = output_folder+"/temp/Het_regions_filtered_"+region+".fasta"
 
-    filter_fasta = "python "+HetDect_folder+"/filter_fasta_by_id.py "+het_fasta+" "+filtered_fasta+" "+region+ " &"
+    filter_fasta = "python "+BACH_folder+"/filter_fasta_by_id.py "+het_fasta+" "+filtered_fasta+" "+region+ " &"
     extract = "samtools faidx "+het_fasta+" "+region+" -o "+region_temp_fasta+" &"
     makeBlastDB = "makeblastdb -in "+filtered_fasta+" -input_type fasta -out "+region_temp_blastdb+" -dbtype nucl &"
     megablast = "blastn -task megablast -db "+region_temp_blastdb+" -query "+region_temp_fasta+" -outfmt 6 -out "+output_folder+"/individual_blasts/"+region+".tab -max_target_seqs 1 -max_hsps 1 &"
@@ -79,7 +79,7 @@ def get_assembly_coordinates_from_blast_results(region_name, blast_start, blast_
 
 
 
-def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, HetDect_folder):
+def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, BACH_folder):
     """
     Main script to launch the comparison between the het regions.
     Writes the results of Blast in output_folder"/All_Blasts.tab"
@@ -103,7 +103,7 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, HetDec
     # We do each step by batch to parallelise, all the extractions, then all the makeBlastDB, then all the megablasts
     het_fasta = SeqIO.parse(het_fasta_name, "fasta")
     for seq_record in het_fasta:
-        filter_fasta, extract, makeBlastDB, megablast = extract_and_blast(seq_record.name, het_fasta_name, output_folder, HetDect_folder)
+        filter_fasta, extract, makeBlastDB, megablast = extract_and_blast(seq_record.name, het_fasta_name, output_folder, BACH_folder)
         filter_cmds.append(filter_fasta)
         extract_cmds.append(extract)
         makeBlastDB_cmds.append(makeBlastDB)

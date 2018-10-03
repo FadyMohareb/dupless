@@ -30,7 +30,7 @@ def usage():
     """
     Prints the usage.
     """
-    print("\npython HetDect.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]\n")
+    print("\npython BACH.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]\n")
     print("\nOptions:\n")
     print("     -t/--nThreads               The number of threads (default 20).")
     print("     -o/--out_folder             The output folder (default is the current directory).")
@@ -45,10 +45,10 @@ def usage():
     print("     -l/--blast_length           The minimum length for the blast hit to be considered as valid (default=0).")
     print("")
     print("     -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:")
-    print("                                     python HetDect.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")
+    print("                                     python BACH.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")
     print("")
     #print("     -p/--plot_histogram         Only plot the coverage histogram (useful to determine the homozygous peak  and so the expected_coverage)")
-    #print("                                     python HetDect.py -p -b [coverage.bed]")
+    #print("                                     python BACH.py -p -b [coverage.bed]")
     #print("")
     print("     -h/--help                   Print the usage and help.")
 
@@ -91,7 +91,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     with open(fasta_masked_oneLine, "w") as fasta_masked_oneLine_handle:
         for seq_record in fasta_masked_handle:
             SeqIO.write(seq_record, fasta_masked_oneLine_handle, "fasta-2line")
-  
+
     cmd_sed = "sed -i 's/\$//g' "+fasta_masked_oneLine
     print(cmd_sed)
     process = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
@@ -188,7 +188,7 @@ if((blast_length_threshold < 0)):
 #=================================================================
 #                          Main                                  =
 #=================================================================
-HetDect_folder = sys.path[0]
+BACH_folder = sys.path[0]
 
 for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
     process = subprocess.Popen(["mkdir", folder], stdout=subprocess.PIPE)
@@ -201,11 +201,11 @@ if not skip_het_dect:
 
 if check_file_with_option(het_bed, "-s/--skip_het_dect"):
     # Launch pairwise blast comparison between the detected heterozygous regions to remove duplication
-    dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, HetDect_folder)
+    dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, BACH_folder)
 
     # Filter the blasts by identity and length.
     print("Filtering blast results with "+str(blast_identity_threshold)+"% identity and min length of "+str(blast_length_threshold)+" bp :")
-    cmd_filter = ["python", HetDect_folder+"/filter_blast_results.py", output_folder+"/All_Blasts_scaffolds_coord.tab", str(blast_identity_threshold), str(blast_length_threshold), assembly_name, output_folder]
+    cmd_filter = ["python", BACH_folder+"/filter_blast_results.py", output_folder+"/All_Blasts_scaffolds_coord.tab", str(blast_identity_threshold), str(blast_length_threshold), assembly_name, output_folder]
     print(" ".join(cmd_filter))
     process = subprocess.Popen(cmd_filter, stdout=subprocess.PIPE)
     process.wait()
