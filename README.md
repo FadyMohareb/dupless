@@ -1,4 +1,4 @@
-## DupLess (Blast-based Assembly dedupliCation of Heterozygous regions):
+## DupLess (Duplication Less):
 ## A tool to remove assembly heterozygous duplication based on blast and read coverage.
 
 Most of the currently available assemblers are designed to work on highly inbred, homozygous species and treats differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly. 
