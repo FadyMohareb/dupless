@@ -2,12 +2,13 @@
 
 # TO DO :
 #       Add legend for coverage and coverage/2 lines on plot
-#       Do a better expected coverage calculation : detect two (add option for ploidy ?) peaks and select one that is freq*2 from the other
+#       Do a better expected coverage calculation : detect two peaks and select one that is freq*2 from the other
 #       Remove previous folders: /!\ individual beds are APPENDED if ran again
 
 # /!\ Values next to gaps are "dragged down" by the 0 coverage of the gaps and could be misidentified as heterozygotes.
 
 # Realign reads to duplicated regions to try to find misassemblies ?
+# Add an option for ploidy ?
 
 # Dependencies:
 # bedtools
@@ -30,7 +31,7 @@ def usage():
     """
     Prints the usage.
     """
-    print("\npython BACH.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]\n")
+    print("\npython DupLess.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]\n")
     print("\nOptions:\n")
     print("     -t/--nThreads               The number of threads (default 20).")
     print("     -o/--out_folder             The output folder (default is the current directory).")
@@ -45,11 +46,8 @@ def usage():
     print("     -l/--blast_length           The minimum length for the blast hit to be considered as valid (default=0).")
     print("")
     print("     -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:")
-    print("                                     python BACH.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")
+    print("                                     python DupLess.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")
     print("")
-    #print("     -p/--plot_histogram         Only plot the coverage histogram (useful to determine the homozygous peak  and so the expected_coverage)")
-    #print("                                     python BACH.py -p -b [coverage.bed]")
-    #print("")
     print("     -h/--help                   Print the usage and help.")
 
 
@@ -77,8 +75,8 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     From an assembly fasta and a bed of regions to remove, creates an haplotype fasta.
     Uses "bedtools maskfasta" and "sed" to remove the regions.
     """
-    fasta_masked = output_folder+"haplotypes/temp_masked.fasta"
-    fasta_masked_oneLine = output_folder+"haplotypes/temp_masked_oneLine.fasta"
+    fasta_masked = output_folder+"/haplotypes/temp_masked.fasta"
+    fasta_masked_oneLine = output_folder+"/haplotypes/temp_masked_oneLine.fasta"
 
     cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", fasta_masked, "-bed", bedname, "-mc", "$"]
     print(" ".join(cmd_mask))
@@ -188,7 +186,7 @@ if((blast_length_threshold < 0)):
 #=================================================================
 #                          Main                                  =
 #=================================================================
-BACH_folder = sys.path[0]
+DupLess_folder = sys.path[0]
 
 for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
     process = subprocess.Popen(["mkdir", folder], stdout=subprocess.PIPE)
@@ -201,11 +199,11 @@ if not skip_het_dect:
 
 if check_file_with_option(het_bed, "-s/--skip_het_dect"):
     # Launch pairwise blast comparison between the detected heterozygous regions to remove duplication
-    dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, BACH_folder)
+    dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLess_folder)
 
     # Filter the blasts by identity and length.
     print("Filtering blast results with "+str(blast_identity_threshold)+"% identity and min length of "+str(blast_length_threshold)+" bp :")
-    cmd_filter = ["python", BACH_folder+"/filter_blast_results.py", output_folder+"/All_Blasts_scaffolds_coord.tab", str(blast_identity_threshold), str(blast_length_threshold), assembly_name, output_folder]
+    cmd_filter = ["python", DupLess_folder+"/filter_blast_results.py", output_folder+"/All_Blasts_scaffolds_coord.tab", str(blast_identity_threshold), str(blast_length_threshold), assembly_name, output_folder]
     print(" ".join(cmd_filter))
     process = subprocess.Popen(cmd_filter, stdout=subprocess.PIPE)
     process.wait()

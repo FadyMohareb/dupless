@@ -1,10 +1,10 @@
-## BACH (Blast-based Assembly dedupliCation of Heterozygous regions):
+## DupLess (Blast-based Assembly dedupliCation of Heterozygous regions):
 ## A tool to remove assembly heterozygous duplication based on blast and read coverage.
 
 Most of the currently available assemblers are designed to work on highly inbred, homozygous species and treats differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly. 
-For these cases, we created "BACH”, a tool capable of quickly detecting and removing the duplicated regions issued from heterozygosity.
+For these cases, we created "DupLess”, a tool capable of quickly detecting and removing the duplicated regions issued from heterozygosity.
 
-BACH workflow is composed of two main steps:
+DupLess workflow is composed of two main steps:
  1. The detection, based on the coverage, of heterozygous regions in the assembly.
  2. The detection of duplicates among the heterozygous regions, based on their sequences similarity (using blast).
 
@@ -31,13 +31,13 @@ BACH workflow is composed of two main steps:
 **Optional**
 
 - A bed file contaning the Gaps in the assembly. If provided, they will be represented as grey bars on the graphs.
-- If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication. (This file is also produced during BACH first step)
+- If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication. (This file is also produced during DupLess first step)
 
 ---
 
 ## Usage
 
-	python BACH.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+	python DupLess.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
 
 **Options:**
 
@@ -58,7 +58,7 @@ BACH workflow is composed of two main steps:
 **Other:**
 
 	-s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:
-                                     python BACH.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+                                     python DupLess.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
 
 	-h/--help                   Print the usage and help.
 
