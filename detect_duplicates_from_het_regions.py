@@ -1,10 +1,8 @@
-#!/bin/python
+#!/usr/bin/python
 
 from subprocess import call, Popen, PIPE
 from Bio import SeqIO
 import os
-
-
 
 def get_lengths_fasta(fasta):
     """

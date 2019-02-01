@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/python
 
 # TO DO :
 #       Add legend for coverage and coverage/2 lines on plot
@@ -14,7 +14,7 @@
 # bedtools
 # samtools 1.9 or higher
 # blastn
-# pandas, numpy, matplotlib, multiprocessing
+# pandas, numpy, matplotlib, multiprocessing, getopt
 
 import getopt
 import subprocess
