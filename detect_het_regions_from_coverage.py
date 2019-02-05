@@ -70,7 +70,7 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
         plt.plot([0, starts[-1]], [contig_coverage, contig_coverage], 'k-', linestyle='--', lw=1)
         plt.plot([0, starts[-1]], [contig_coverage/2, contig_coverage/2], 'k-', linestyle='--', lw=1)
         plt.xlabel('Position (window size='+str(window_size)+")")
-        plt.ylabel('Median read coverage')
+        plt.ylabel('Median of read coverage for each window')
         plt.title(str(contig_name))
         plt.ylim(0,contig_coverage*2)
 
@@ -160,16 +160,17 @@ def create_bed_het_regions(contig_name, starts, stops, classifications, output_f
                 error_file.write("Different lengths for starts and classifications:"+str(len(starts))+" and "+str(len(classifications)))
 
 
-
-def coverage_histogram(contig_coverages, genome_mode, output_folder):
+# genome_expected_coverage is coming from the user "-c" or fom computation of the genome mode
+# Computation of the genome mode does not work if Heterozygous peak > Homozygous peak
+def coverage_histogram(contig_coverages, genome_expected_coverage, output_folder):
     """
     Takes a list of coveragesself.
     Saves the histogram of coverage under output_folder/"Histogram_coverage.png".
     """
     plt.figure(figsize=(20,16), dpi=80)
-    plt.hist(contig_coverages, genome_mode, facecolor='green', alpha=0.75)
+    plt.hist(contig_coverages, genome_expected_coverage, facecolor='green', alpha=0.75)
     plt.grid(True)
-    plt.axvline(x=genome_mode, color='r', linestyle='--', lw=2)
+    plt.axvline(x=genome_expected_coverage, color='r', linestyle='--', lw=2)
     plt.xlabel("Coverage (x fold), up to expected coverage*2 only.")
     plt.ylabel('Frequency')
     plt.title("Coverage distribution, zero coverage regions ignored (Red bar is the expected coverage)")
@@ -203,10 +204,12 @@ def process_contig(contig_name):
     global WINDOW_SIZE
     global OUTPUT_FOLDER
     global GAPS_DF
+    global SKIP_PLOT
 
     contig_df = BED_DF[BED_DF['contig'].isin([contig_name])]
     starts, stops, window_medians, classifications = get_windows_medians_contig(contig_df, GENOME_MODE, WINDOW_SIZE)
-    create_plot_coverage(starts, window_medians, classifications, GENOME_MODE, contig_name, GAPS_DF, WINDOW_SIZE, OUTPUT_FOLDER)
+    if not(SKIP_PLOT):
+        create_plot_coverage(starts, window_medians, classifications, GENOME_MODE, contig_name, GAPS_DF, WINDOW_SIZE, OUTPUT_FOLDER)
     create_bed_het_regions(contig_name, starts, stops, classifications, OUTPUT_FOLDER)
 
 
@@ -219,7 +222,7 @@ GAPS_DF = pd.DataFrame()
 #==========================================
 # "Main" function that uses the other ones
 #==========================================
-def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_folder, nbThreads):
+def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_folder, nbThreads, skip_plot):
     """
     Reads the coverage bed file and produces bed and graphs of the heterozygous regions.
     Returns:
@@ -230,10 +233,12 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     global WINDOW_SIZE
     global OUTPUT_FOLDER
     global GAPS_DF
+    global SKIP_PLOT
 
     GENOME_MODE = genome_mode
     WINDOW_SIZE = window_size
     OUTPUT_FOLDER = output_folder
+    SKIP_PLOT = skip_plot
 
     #GAPS_DF = pd.DataFrame()
     if(gaps_bed != None):

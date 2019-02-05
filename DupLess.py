@@ -14,7 +14,9 @@
 # bedtools
 # samtools 1.9 or higher
 # blastn
-# pandas, numpy, matplotlib, multiprocessing, getopt
+# pandas, numpy, matplotlib, multiprocessing, getopt, biopython
+
+# For matplotlib.pyplot: needs python-tk: sudo apt-get install python-tk
 
 import getopt
 import subprocess
@@ -31,7 +33,7 @@ def usage():
     """
     Prints the usage.
     """
-    print("\npython DupLess.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]\n")
+    print("\npython DupLess.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]\n")
     print("\nOptions:\n")
     print("     -t/--nThreads               The number of threads (default 20).")
     print("     -o/--out_folder             The output folder (default is the current directory).")
@@ -44,6 +46,8 @@ def usage():
     print("                                 If no value is given, it will be based on the mode of the coverage distribution (not reliable if high heterozygosity).")
     print("     -i/--blast_identity         The minimum percentage of identity between the het region and the blast hit to consider it valid (default: 90, range 0 to 100).")
     print("     -l/--blast_length           The minimum length for the blast hit to be considered as valid (default=0).")
+    print("")
+    print("     -n/--no_plot                Skip the creation of the coverage plots")
     print("")
     print("     -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:")
     print("                                     python DupLess.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")
@@ -117,9 +121,11 @@ blast_identity_threshold = 90   # Two regions will be considered duplicated if..
 blast_length_threshold = 0      # these two blast thresholds are met.
 het_bed = None                  # Created by the script. Bed defining the heterozygous region.
 skip_het_dect = False           # Possibility to skip the first step (het detection) which is time consuming.
+skip_plot = False               # Skip the generation of the coverage plots
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "t:w:b:a:c:g:o:s:i:l:h", ["nThreads=", "window_size=", "bed_cov=", "assembly=", "expected_cov=", "bed_gaps=", "out_folder=", "skip_het_detection=", "blast_identity=", "blast_length=", "help"])
+    opts, args = getopt.getopt(sys.argv[1:], "t:w:b:a:c:g:o:s:i:l:nh", ["nThreads=", "window_size=", "bed_cov=", "assembly=", "expected_cov=", "bed_gaps=", 
+                                                                        "out_folder=", "skip_het_detection=", "blast_identity=", "blast_length=", "no_plot", "help"])
 except getopt.GetoptError as err:
     print(str(err))
     usage()
@@ -146,6 +152,8 @@ for o,a in opts:
         blast_identity_threshold = int(a)
     elif o in ("-l", "--blast_length"):
         blast_length_threshold = float(a)
+    elif o in ("-n", "--no_plot"):
+        skip_plot = True
     elif o in ("-h", "--help"):
         usage()
         sys.exit(1)
@@ -195,7 +203,7 @@ for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/
 
 if not skip_het_dect:
     # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
-    het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder, nbThreads)
+    het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder, nbThreads, skip_plot)
 
 if check_file_with_option(het_bed, "-s/--skip_het_dect"):
     # Launch pairwise blast comparison between the detected heterozygous regions to remove duplication

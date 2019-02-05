@@ -13,9 +13,9 @@ DupLess workflow is composed of two main steps:
 ## Dependencies
 
 - python
-- The following python packages: numpy, pandas, subprocess, Bio, matplotlib.pyplot, getopt, multiprocessing.
+- The following python packages: numpy, pandas, subprocess, biopython, matplotlib.pyplot, getopt, multiprocessing.
 
-- **samtools v1.9** or higher
+- **samtools v1.9** or higher (/!\ DupLess will not work with version prior to 1.9, as it needs the "-o" parameter)
 - **bedtools v2.27.1** or higher
 - **blastn v2.6.0+** or higher
 
@@ -56,6 +56,7 @@ DupLess workflow is composed of two main steps:
 
 
 **Other:**
+	-n/--no_plot				Skip the creation of the coverage plots
 
 	-s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:
                                      python DupLess.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
