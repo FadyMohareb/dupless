@@ -2,9 +2,11 @@
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib
 # non-interactive backend to avoid error : "XIO:  fatal IO error 25 (Inappropriate ioctl for device)"
 matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 18})
 import sys
 import subprocess
 from multiprocessing import Pool
@@ -72,7 +74,7 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
         plt.plot([0, starts[-1]], [contig_coverage, contig_coverage], 'k-', linestyle='--', lw=1)
         plt.plot([0, starts[-1]], [contig_coverage/2, contig_coverage/2], 'k-', linestyle='--', lw=1)
         plt.xlabel('Position (window size='+str(window_size)+")")
-        plt.ylabel('Median of read coverage for each window\n(expected coverage='+contig_coverage+')')
+        plt.ylabel('Median of read coverage for each window\n(expected coverage='+str(contig_coverage)+')')
         plt.title(str(contig_name))
         plt.ylim(0,contig_coverage*2)
 

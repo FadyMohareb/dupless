@@ -9,7 +9,7 @@
 
 # Dependencies:
 # bedtools
-# samtools 1.9 or higher
+# samtools 1.9 or higher (important for the "-o" parameter)
 # blastn
 # pandas, numpy, matplotlib, multiprocessing, getopt, biopython
 
@@ -189,8 +189,7 @@ if((blast_length_threshold < 0)):
     sys.exit(2)
 
 if(os.path.isdir(output_folder)):
-    print("Folder '"+output_folder+"' already exists, stopping now...\n")
-    usage()
+    print("\nFolder '"+output_folder+"' already exists, stopping now...\n")
     sys.exit(2)
 
 #=================================================================
