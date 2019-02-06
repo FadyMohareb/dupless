@@ -1,11 +1,9 @@
 #!/usr/bin/python
 
 # TO DO :
-#       Add legend for coverage and coverage/2 lines on plot
-#       Do a better expected coverage calculation : detect two peaks and select one that is freq*2 from the other
-#       Remove previous folders: /!\ individual beds are APPENDED if ran again
-#       Realign reads to duplicated regions to try to find misassemblies ?
-#       Add ctrl-c to stop all the threads
+#       Do a better expected coverage calculation : detect two peaks and select one that is freq*2 from the other (can be an issue if more than two peaks)
+#       If long reads: align them to duplicated regions to check for misassemblies
+#       Correct coverage for edge effect on the end of the contigs (if paired ends)
 
 # Dependencies:
 # bedtools

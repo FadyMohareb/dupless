@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from subprocess import call, Popen, PIPE
+from multiprocessing import Pool
 from Bio import SeqIO
 import os
 
@@ -35,23 +36,38 @@ def extract_and_blast(region, het_fasta, output_folder, DupLess_folder):
     # We remove the sequence from the list of het sequences to avoid self hit with blast.
     filtered_fasta = output_folder+"/temp/Het_regions_filtered_"+region+".fasta"
 
-    filter_fasta = "python "+DupLess_folder+"/filter_fasta_by_id.py "+het_fasta+" "+filtered_fasta+" "+region+ " &"
-    extract = "samtools faidx "+het_fasta+" "+region+" -o "+region_temp_fasta+" &"
-    makeBlastDB = "makeblastdb -in "+filtered_fasta+" -input_type fasta -out "+region_temp_blastdb+" -dbtype nucl &"
-    megablast = "blastn -task megablast -db "+region_temp_blastdb+" -query "+region_temp_fasta+" -outfmt 6 -out "+output_folder+"/individual_blasts/"+region+".tab -max_target_seqs 1 -max_hsps 1 &"
+    #filter_fasta = "python "+DupLess_folder+"/filter_fasta_by_id.py "+het_fasta+" "+filtered_fasta+" "+region+ " &"
+    #extract = "samtools faidx "+het_fasta+" "+region+" -o "+region_temp_fasta+" &"
+    #makeBlastDB = "makeblastdb -in "+filtered_fasta+" -input_type fasta -out "+region_temp_blastdb+" -dbtype nucl &"
+    #megablast = "blastn -task megablast -db "+region_temp_blastdb+" -query "+region_temp_fasta+" -outfmt 6 -out "+output_folder+"/individual_blasts/"+region+".tab -max_target_seqs 1 -max_hsps 1 &"
+
+    filter_fasta = "python "+DupLess_folder+"/filter_fasta_by_id.py "+het_fasta+" "+filtered_fasta+" "+region
+    extract = "samtools faidx "+het_fasta+" "+region+" -o "+region_temp_fasta
+    makeBlastDB = "makeblastdb -in "+filtered_fasta+" -input_type fasta -out "+region_temp_blastdb+" -dbtype nucl"
+    megablast = "blastn -task megablast -db "+region_temp_blastdb+" -query "+region_temp_fasta+" -outfmt 6 -out "+output_folder+"/individual_blasts/"+region+".tab -max_target_seqs 1 -max_hsps 1"
 
     return filter_fasta, extract, makeBlastDB, megablast
 
 
+# Used previously, kept as backup
+# Issue: when trying to ctrl-c during multiprocesses, had to quit each process at a time
+#def multi_processes(list_cmds):
+#    """
+#    Takes a list of commands and launches them in parallel.
+#    """
+#    procs = [ Popen(i, shell=True, stdout=PIPE) for i in list_cmds ]
+#    for p in procs:
+#        p.communicate()
 
-def multi_processes(list_cmds):
-    """
-    Takes a list of commands and launches them in parallel.
-    """
-    procs = [ Popen(i, shell=True, stdout=PIPE) for i in list_cmds ]
-    for p in procs:
-        p.communicate()
+def run_cmd(cmd):
+    Popen(cmd, shell=True, stdout=PIPE).communicate()
 
+def multi_processes(list_cmds, nbThreads):
+    """
+    Takes a list of commands and launches them in parallel on "nbThreads" processes
+    """
+    pl = Pool(nbThreads)
+    pl.map(run_cmd, list_cmds)
 
 
 def get_assembly_coordinates_from_blast_results(region_name, blast_start, blast_stop):
@@ -109,10 +125,10 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
         n_process = n_process + 1
 
         if n_process >= int(nbThreads):
-            multi_processes(filter_cmds)
-            multi_processes(extract_cmds)
-            multi_processes(makeBlastDB_cmds)
-            multi_processes(megablast_cmds)
+            multi_processes(filter_cmds, nbThreads)
+            multi_processes(extract_cmds, nbThreads)
+            multi_processes(makeBlastDB_cmds,nbThreads)
+            multi_processes(megablast_cmds, nbThreads)
 
             n_process = 0
             filter_cmds = list()
@@ -122,11 +138,11 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
             process = Popen("rm "+output_folder+"/temp/*", shell=True, stdout=PIPE)
             process.wait()
 
-    multi_processes(filter_cmds)
-    multi_processes(extract_cmds)
-    multi_processes(makeBlastDB_cmds)
-    multi_processes(megablast_cmds)
-    multi_processes(remove_cmds)
+    multi_processes(filter_cmds, nbThreads)
+    multi_processes(extract_cmds, nbThreads)
+    multi_processes(makeBlastDB_cmds, nbThreads)
+    multi_processes(megablast_cmds, nbThreads)
+    multi_processes(remove_cmds, nbThreads)
     print("Blast done !\n")
 
     # Concatenate the blast results and filter them by identity% and length.
