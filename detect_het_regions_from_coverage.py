@@ -3,6 +3,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+# non-interactive backend to avoid error : "XIO:  fatal IO error 25 (Inappropriate ioctl for device)"
+matplotlib.use('Agg')
 import sys
 import subprocess
 from multiprocessing import Pool
@@ -70,7 +72,7 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
         plt.plot([0, starts[-1]], [contig_coverage, contig_coverage], 'k-', linestyle='--', lw=1)
         plt.plot([0, starts[-1]], [contig_coverage/2, contig_coverage/2], 'k-', linestyle='--', lw=1)
         plt.xlabel('Position (window size='+str(window_size)+")")
-        plt.ylabel('Median of read coverage for each window')
+        plt.ylabel('Median of read coverage for each window\n(expected coverage='+contig_coverage+')')
         plt.title(str(contig_name))
         plt.ylim(0,contig_coverage*2)
 
@@ -78,7 +80,6 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
         hetArtist = plt.Line2D((0,1),(0,0), color='#d62728', marker='o')
         homArtist = plt.Line2D((0,1),(0,0), color='#5ac739', marker='o')
         outArtist = plt.Line2D((0,1),(0,0), color = '#440a7f', marker='o')
-
         #Create legend from custom artist/label lists
         plt.legend([hetArtist,homArtist, outArtist],['Heterozygous', 'Homozygous', 'Outlier'])
 

@@ -4,11 +4,8 @@
 #       Add legend for coverage and coverage/2 lines on plot
 #       Do a better expected coverage calculation : detect two peaks and select one that is freq*2 from the other
 #       Remove previous folders: /!\ individual beds are APPENDED if ran again
-
-# /!\ Values next to gaps are "dragged down" by the 0 coverage of the gaps and could be misidentified as heterozygotes.
-
-# Realign reads to duplicated regions to try to find misassemblies ?
-# Add an option for ploidy ?
+#       Realign reads to duplicated regions to try to find misassemblies ?
+#       Add ctrl-c to stop all the threads
 
 # Dependencies:
 # bedtools
@@ -188,6 +185,11 @@ if((blast_identity_threshold < 0) or (blast_identity_threshold > 100)):
 
 if((blast_length_threshold < 0)):
     print("The blast coverage treshold (-l/--blast_length option) can not be lower than 0. Current value: "+str(blast_length_threshold)+"\n")
+    usage()
+    sys.exit(2)
+
+if(os.path.isdir(output_folder)):
+    print("Folder '"+output_folder+"' already exists, stopping now...\n")
     usage()
     sys.exit(2)
 
