@@ -156,11 +156,20 @@ for o,a in opts:
         assert False, "Unhandled option !"
 
 
-# If we do not skip the het step, then we need the coverage bed
+# If we do not skip the het step:
 if not skip_het_dect:
+    # Then we need the coverage bed
     if not check_file_with_option(coverage_bed, "-b/--bed_cov"):
         usage()
         sys.exit(2)
+    # And we stop if folder already exists
+    if(os.path.isdir(output_folder)):
+        print("\nFolder '"+output_folder+"' already exists, stopping now...\n")
+        sys.exit(2)
+    else:
+        for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
+            process = subprocess.Popen(["mkdir", folder], stdout=subprocess.PIPE)
+            process.wait()
 
 if not check_file_with_option(assembly_name, "-a/--assembly"):
     usage()
@@ -186,19 +195,13 @@ if((blast_length_threshold < 0)):
     usage()
     sys.exit(2)
 
-if(os.path.isdir(output_folder)):
-    print("\nFolder '"+output_folder+"' already exists, stopping now...\n")
-    sys.exit(2)
-
 #=================================================================
 #                          Main                                  =
 #=================================================================
 DupLess_folder = sys.path[0]
 
-for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
-    process = subprocess.Popen(["mkdir", folder], stdout=subprocess.PIPE)
-    process.wait()
-
+process = subprocess.Popen(["samtools", "faidx", assembly_name], shell=False, stdout=subprocess.PIPE)
+process.wait()
 
 if not skip_het_dect:
     # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
