@@ -5,6 +5,7 @@ from multiprocessing import Pool
 from Bio import SeqIO
 import os
 
+
 def get_lengths_fasta(fasta):
     """
     Takes a fasta file name.
@@ -68,6 +69,7 @@ def multi_processes(list_cmds, nbThreads):
     """
     pl = Pool(nbThreads)
     pl.map(run_cmd, list_cmds)
+    pl.close()
 
 
 def get_assembly_coordinates_from_blast_results(region_name, blast_start, blast_stop):

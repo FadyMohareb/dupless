@@ -4,6 +4,7 @@
 #       Do a better expected coverage calculation : detect two peaks and select one that is freq*2 from the other (can be an issue if more than two peaks)
 #       If long reads: align them to duplicated regions to check for misassemblies
 #       Correct coverage for edge effect on the end of the contigs (if paired ends)
+#       Add error trapping = check Popen output number and exit if error
 
 # Dependencies:
 # bedtools
@@ -18,11 +19,9 @@ import subprocess
 import sys
 import os
 
-import Bio.SeqIO as SeqIO
-from Bio.SeqIO import FastaIO
-
 import detect_het_regions_from_coverage as dh
 import detect_duplicates_from_het_regions as dd
+
 
 def usage():
     """
@@ -78,19 +77,18 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     fasta_masked_oneLine = output_folder+"/haplotypes/temp_masked_oneLine.fasta"
 
     cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", fasta_masked, "-bed", bedname, "-mc", "$"]
-    print(" ".join(cmd_mask))
+    print("\t"+ " ".join(cmd_mask))
     process = subprocess.Popen(cmd_mask, stdout=subprocess.PIPE)
     process.wait()
 
     # Transform to single line fasta to avoid empty lines after sed step (fasta-2line format)
     # Indeed if a region is longer than the fasta wrapping (usually 80 caracters), then the fasta will contain empty lines.
-    fasta_masked_handle = SeqIO.parse(fasta_masked, "fasta")
     with open(fasta_masked_oneLine, "w") as fasta_masked_oneLine_handle:
-        for seq_record in fasta_masked_handle:
-            SeqIO.write(seq_record, fasta_masked_oneLine_handle, "fasta-2line")
+        cmd_oneLine = "awk \'/^>/{print s? s\"\\n\"$0:$0;s=\"\";next}{s=s sprintf(\"%s\",$0)}END{if(s)print s}\' "+fasta_masked 
+        subprocess.Popen(cmd_oneLine, shell=True, stdout=fasta_masked_oneLine_handle).communicate()
 
     cmd_sed = "sed -i 's/\$//g' "+fasta_masked_oneLine
-    print(cmd_sed)
+    print("\t"+cmd_sed)
     process = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
     process.wait()
 
@@ -100,7 +98,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     process = subprocess.Popen(["rm", fasta_masked])
     process.wait()
 
-    print("Haplotype generated in "+hapname)
+    print("Haplotype generated in "+hapname+"\n")
 
 #=================================================================
 #                           GetOpt                               =
@@ -166,10 +164,7 @@ if not skip_het_dect:
     if(os.path.isdir(output_folder)):
         print("\nFolder '"+output_folder+"' already exists, stopping now...\n")
         sys.exit(2)
-    else:
-        for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
-            process = subprocess.Popen(["mkdir", folder], stdout=subprocess.PIPE)
-            process.wait()
+
 
 if not check_file_with_option(assembly_name, "-a/--assembly"):
     usage()
@@ -200,6 +195,10 @@ if((blast_length_threshold < 0)):
 #=================================================================
 DupLess_folder = sys.path[0]
 
+for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
+    process = subprocess.Popen(["mkdir", folder], stdout=subprocess.PIPE)
+    process.wait()
+
 process = subprocess.Popen(["samtools", "faidx", assembly_name], shell=False, stdout=subprocess.PIPE)
 process.wait()
 
@@ -223,7 +222,6 @@ if check_file_with_option(het_bed, "-s/--skip_het_dect"):
     print("Generating the haplotype fasta files from the blast results...")
     make_haplotype(output_folder+"/haplotypes/haplotype1.fasta", assembly_name, output_folder+"/toRemoveFromhap1.bed", output_folder)
     make_haplotype(output_folder+"/haplotypes/haplotype2.fasta", assembly_name, output_folder+"/toRemoveFromhap2.bed", output_folder)
-    print("Haplotypes created !\n")
 else:
     usage()
     sys.exit(2)
