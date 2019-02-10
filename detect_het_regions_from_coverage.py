@@ -268,7 +268,7 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
         pool = Pool(nbThreads)
         pool.map(process_contig, BED_DF['contig'].unique())
     except:
-        print(traceback.format_exc())
+        print("Error during the processing of the contigs")
         sys.exit(1)
     # This ensure that the subprocesses are killed even if there is an error
     finally:

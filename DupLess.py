@@ -3,8 +3,9 @@
 # TO DO :
 #       Do a better expected coverage calculation : detect two peaks and select one that is freq*2 from the other (can be an issue if more than two peaks)
 #       If long reads: align them to duplicated regions to check for misassemblies
-#       Correct coverage for edge effect on the end of the contigs (if paired ends)
+#       Correct coverage for edge effect on the end of the contigs (if paired ends) ?
 #       Add error trapping = check Popen output number and exit if error
+#       Add checking the files in utils
 
 # Dependencies:
 # bedtools
@@ -21,6 +22,7 @@ import os
 
 import detect_het_regions_from_coverage as dh
 import detect_duplicates_from_het_regions as dd
+import utils_dupless as ud
 
 
 def usage():
@@ -49,25 +51,6 @@ def usage():
     print("     -h/--help                   Print the usage and help.")
 
 
-def check_file_with_option(filename, option):
-    """
-    Checks if "filename" exists and is a file.
-    Option is used to display an informative error message.
-    Returns:
-        True if file exists and is a file.
-        False if filename==None or is not a file (Also prints an error message).
-    """
-    file_ok = True
-    if(filename == None):
-        print("\nOption "+option+" is missing.\n")
-        file_ok = False
-    else:
-        if not os.path.isfile(filename):
-            print("\nValue for option "+option+" is not a file.\n")
-            file_ok = False
-    return file_ok
-
-
 def make_haplotype(hapname, assembly_name, bedname, output_folder):
     """
     From an assembly fasta and a bed of regions to remove, creates an haplotype fasta.
@@ -76,17 +59,21 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     fasta_masked = output_folder+"/haplotypes/temp_masked.fasta"
     fasta_masked_oneLine = output_folder+"/haplotypes/temp_masked_oneLine.fasta"
 
+    # Mask the duplicate regions with a "$"
     cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", fasta_masked, "-bed", bedname, "-mc", "$"]
     print("\t"+ " ".join(cmd_mask))
     process = subprocess.Popen(cmd_mask, stdout=subprocess.PIPE)
-    process.wait()
+    return_code = process.wait()
+    ud.check_return_code(return_code, " ".join(cmd_mask))
 
     # Transform to single line fasta to avoid empty lines after sed step (fasta-2line format)
     # Indeed if a region is longer than the fasta wrapping (usually 80 caracters), then the fasta will contain empty lines.
+    # awk from: https://stackoverflow.com/questions/15857088/remove-line-breaks-in-a-fasta-file 
     with open(fasta_masked_oneLine, "w") as fasta_masked_oneLine_handle:
         cmd_oneLine = "awk \'/^>/{print s? s\"\\n\"$0:$0;s=\"\";next}{s=s sprintf(\"%s\",$0)}END{if(s)print s}\' "+fasta_masked 
         subprocess.Popen(cmd_oneLine, shell=True, stdout=fasta_masked_oneLine_handle).communicate()
 
+    # Replace the "$" which marks the duplicate regions by an empty string (to remove them)
     cmd_sed = "sed -i 's/\$//g' "+fasta_masked_oneLine
     print("\t"+cmd_sed)
     process = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
@@ -97,8 +84,6 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
 
     process = subprocess.Popen(["rm", fasta_masked])
     process.wait()
-
-    print("Haplotype generated in "+hapname+"\n")
 
 #=================================================================
 #                           GetOpt                               =
@@ -157,7 +142,9 @@ for o,a in opts:
 # If we do not skip the het step:
 if not skip_het_dect:
     # Then we need the coverage bed
-    if not check_file_with_option(coverage_bed, "-b/--bed_cov"):
+    file_ok, error_mssg = ud.check_file(coverage_bed)
+    if not file_ok:
+        print("Error with option -b/--bed_cov: "+error_mssg)
         usage()
         sys.exit(2)
     # And we stop if folder already exists
@@ -165,8 +152,9 @@ if not skip_het_dect:
         print("\nFolder '"+output_folder+"' already exists, stopping now...\n")
         sys.exit(2)
 
-
-if not check_file_with_option(assembly_name, "-a/--assembly"):
+file_ok, error_mssg = ud.check_file(assembly_name)
+if not file_ok:
+    print("Error with option -a/--assembly: "+error_mssg)
     usage()
     sys.exit(2)
 
@@ -206,7 +194,8 @@ if not skip_het_dect:
     # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
     het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder, nbThreads, skip_plot)
 
-if check_file_with_option(het_bed, "-s/--skip_het_dect"):
+file_ok, error_mssg = ud.check_file(het_bed)
+if file_ok:
     # Launch pairwise blast comparison between the detected heterozygous regions to remove duplication
     dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLess_folder)
 
@@ -221,8 +210,11 @@ if check_file_with_option(het_bed, "-s/--skip_het_dect"):
     # Create the haplotype from the bed files resulting from blast filtration.
     print("Generating the haplotype fasta files from the blast results...")
     make_haplotype(output_folder+"/haplotypes/haplotype1.fasta", assembly_name, output_folder+"/toRemoveFromhap1.bed", output_folder)
+    print("Haplotype 1 generated in :" + output_folder+"/haplotypes/haplotype1.fasta")
     make_haplotype(output_folder+"/haplotypes/haplotype2.fasta", assembly_name, output_folder+"/toRemoveFromhap2.bed", output_folder)
+    print("Haplotype 2 generated in :" + output_folder+"/haplotypes/haplotype2.fasta")
 else:
+    print("Error with the heterozygous bed: "+error_mssg)
     usage()
     sys.exit(2)
 

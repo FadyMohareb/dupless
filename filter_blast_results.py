@@ -5,27 +5,11 @@ from Bio import SeqIO
 import sys
 import os
 
+import utils_dupless as ud
+
 def usage():
     print("python filter_blast_results.py blast_results.tab min_identity min_length assembly.fasta output_folder")
 
-
-def check_file(filename):
-    """
-    Checks if "filename" exists and is a file.
-    Returns:
-        True if file exists and is a file.
-        False if filename==None or is not a file.
-    """
-    file_ok = True
-    error_mssg = ""
-    if(filename == None):
-        error_mssg = "Error: file '"+filename+"' is missing."
-        file_ok = False
-    else:
-        if not os.path.isfile(filename):
-            error_mssg = "Error: '"+filename+"' is not a file."
-            file_ok = False
-    return file_ok, error_mssg
 
 #=================================================================
 #                             Input checks                       =
@@ -43,13 +27,13 @@ assembly = sys.argv[4]
 output_folder = sys.argv[5]
 
 
-file_ok, error_mssg =  check_file(blast_filename)
+file_ok, error_mssg =  ud.check_file(blast_filename)
 if not(file_ok):
     print("Blast output file could not be found. See error message below for more details:")
     print(error_mssg)
     sys.exit(2)
 
-file_ok, error_mssg = check_file(assembly)
+file_ok, error_mssg = ud.check_file(assembly)
 if not(file_ok):
     print("Assembly fasta could not be found. See error message below for more details:")
     print(error_mssg)

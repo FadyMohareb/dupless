@@ -3,28 +3,11 @@
 from subprocess import call, Popen, PIPE
 from Bio import SeqIO
 import sys
-import os
+
+import utils_dupless as ud
 
 def usage():
     print("python filter_fasta_by_id.py original_fasta new_fasta ID_to_remove")
-
-def check_file(filename):
-    """
-    Checks if "filename" exists and is a file.
-    Returns:
-        True if file exists and is a file.
-        False if filename==None or is not a file.
-    """
-    file_ok = True
-    error_mssg = ""
-    if(filename == None):
-        error_mssg = "Error: file '"+filename+"' is missing."
-        file_ok = False
-    else:
-        if not os.path.isfile(filename):
-            error_mssg = "Error: '"+filename+"' is not a file."
-            file_ok = False
-    return file_ok, error_mssg
 
 # ============================ check input ================================
 # Only 3 arguments needed, but length of 4 because sys.argv[0] = name of the script
@@ -38,7 +21,7 @@ new_fasta_name = sys.argv[2]
 ID = sys.argv[3]
 
 
-file_ok, error_mssg = check_file(old_fasta_name)
+file_ok, error_mssg = ud.check_file(old_fasta_name)
 if not(file_ok):
     print(error_mssg)
     sys.exit(2)
