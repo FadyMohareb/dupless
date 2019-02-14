@@ -5,7 +5,10 @@
 #       If long reads: align them to duplicated regions to check for misassemblies
 #       Correct coverage for edge effect on the end of the contigs (if paired ends) ?
 #       Add error trapping = check Popen output number and exit if error
-#       Add checking the files in utils
+#       Have logs (running and error log from communicate()[1])
+#       should -no_plot also skip the histogram plotting ?
+#       Add threshold to remove whole contig if duplicated regions covers > threshold% of total length
+#       Remove only blast hit ? or remove whole hhet region ? 
 
 # Dependencies:
 # bedtools
@@ -62,28 +65,34 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     # Mask the duplicate regions with a "$"
     cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", fasta_masked, "-bed", bedname, "-mc", "$"]
     print("\t"+ " ".join(cmd_mask))
-    process = subprocess.Popen(cmd_mask, stdout=subprocess.PIPE)
-    return_code = process.wait()
-    ud.check_return_code(return_code, " ".join(cmd_mask))
+    pr = subprocess.Popen(cmd_mask, shell=False, stdout=subprocess.PIPE)
+    #print(pr.communicate()) ?
+    pr.communicate()
+    ud.check_return_code(pr.returncode, " ".join(cmd_mask))
 
-    # Transform to single line fasta to avoid empty lines after sed step (fasta-2line format)
+    # Transform to single line fasta to avoid empty lines after sed step
     # Indeed if a region is longer than the fasta wrapping (usually 80 caracters), then the fasta will contain empty lines.
-    # awk from: https://stackoverflow.com/questions/15857088/remove-line-breaks-in-a-fasta-file 
+    # awk from: https://stackoverflow.com/questions/15857088/remove-line-breaks-in-a-fasta-file, to avoid error with biopython: "fasta-2line"
     with open(fasta_masked_oneLine, "w") as fasta_masked_oneLine_handle:
         cmd_oneLine = "awk \'/^>/{print s? s\"\\n\"$0:$0;s=\"\";next}{s=s sprintf(\"%s\",$0)}END{if(s)print s}\' "+fasta_masked 
-        subprocess.Popen(cmd_oneLine, shell=True, stdout=fasta_masked_oneLine_handle).communicate()
+        pr = subprocess.Popen(cmd_oneLine, shell=True, stdout=fasta_masked_oneLine_handle)
+        pr.communicate()
+        ud.check_return_code(pr.returncode, cmd_oneLine)
 
     # Replace the "$" which marks the duplicate regions by an empty string (to remove them)
     cmd_sed = "sed -i 's/\$//g' "+fasta_masked_oneLine
     print("\t"+cmd_sed)
-    process = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
-    process.wait()
+    pr = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
+    pr.communicate()
+    ud.check_return_code(pr.returncode, cmd_sed)
 
-    process = subprocess.Popen(["mv", fasta_masked_oneLine, hapname])
-    process.wait()
+    pr = subprocess.Popen(["mv", fasta_masked_oneLine, hapname], shell=False)
+    pr.communicate()
+    ud.check_return_code(pr.returncode, "mv "+fasta_masked_oneLine+" "+hapname)
 
-    process = subprocess.Popen(["rm", fasta_masked])
-    process.wait()
+    pr = subprocess.Popen(["rm", fasta_masked], shell=False)
+    pr.communicate()
+    ud.check_return_code(pr.returncode, "rm "+fasta_masked)
 
 #=================================================================
 #                           GetOpt                               =
@@ -184,11 +193,14 @@ if((blast_length_threshold < 0)):
 DupLess_folder = sys.path[0]
 
 for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
-    process = subprocess.Popen(["mkdir", folder], stdout=subprocess.PIPE)
-    process.wait()
+    pr = subprocess.Popen(["mkdir", folder], stdout=subprocess.PIPE)
+    pr.communicate()
+    ud.check_return_code(pr.returncode, "mkdir "+folder)
 
-process = subprocess.Popen(["samtools", "faidx", assembly_name], shell=False, stdout=subprocess.PIPE)
-process.wait()
+cmd = ["samtools", "faidx", assembly_name]
+pr = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
+pr.communicate()
+ud.check_return_code(pr.returncode, " ".join(cmd))
 
 if not skip_het_dect:
     # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
@@ -203,8 +215,9 @@ if file_ok:
     print("Filtering blast results with "+str(blast_identity_threshold)+"% identity and min length of "+str(blast_length_threshold)+" bp :")
     cmd_filter = ["python", DupLess_folder+"/filter_blast_results.py", output_folder+"/All_Blasts_scaffolds_coord.tab", str(blast_identity_threshold), str(blast_length_threshold), assembly_name, output_folder]
     print(" ".join(cmd_filter))
-    process = subprocess.Popen(cmd_filter, stdout=subprocess.PIPE)
-    process.wait()
+    pr = subprocess.Popen(cmd_filter, stdout=subprocess.PIPE)
+    pr.communicate()
+    ud.check_return_code(pr.returncode, " ".join(cmd_filter))
     print("Blast filtered !\n")
 
     # Create the haplotype from the bed files resulting from blast filtration.

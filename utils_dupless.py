@@ -5,9 +5,9 @@ import os
 
 def check_return_code(code, cmd):
     if(code != 0):
-        print("An error occured during the following command:")
+        print("\nAn error occured during the following command:")
         print(cmd)
-        print("Error code:"+code)
+        print("Error code:"+str(code))
         sys.exit(code)
 
 

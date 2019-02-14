@@ -2,7 +2,7 @@
 ## A tool to remove assembly heterozygous duplication based on blast and read coverage.
 
 Most of the currently available assemblers are designed to work on highly inbred, homozygous species and treats differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly. 
-For these cases, we created "DupLess”, a tool capable of quickly detecting and removing the duplicated regions issued from heterozygosity.
+For these cases, we created "DupLess”, a tool capable of detecting and removing the duplicated regions issued from heterozygosity.
 
 DupLess workflow is composed of two main steps:
  1. The detection, based on the coverage, of heterozygous regions in the assembly.
@@ -18,6 +18,7 @@ DupLess workflow is composed of two main steps:
 - **samtools v1.9** or higher (/!\ DupLess will not work with version prior to 1.9, as it needs the "-o" parameter)
 - **bedtools v2.27.1** or higher
 - **blastn v2.6.0+** or higher
+- **awk and sed**
 
 ---
 
@@ -26,11 +27,11 @@ DupLess workflow is composed of two main steps:
 **Required**
 
 - The assembly in fasta format.
-- A bed file with the coverage value for each base of the assembly. You can produce such a file by aligning reads to the assembly and then run "bedtools genomecov" on the resulting bam.
+- A bed file with the coverage value for each base of the assembly. You can produce such a file by aligning reads to the assembly and then run "bedtools genomecov" (with the -d option) on the resulting bam.
 
 **Optional**
 
-- A bed file contaning the Gaps in the assembly. If provided, they will be represented as grey bars on the graphs.
+- A bed file contaning the gaps coordinates in the assembly. If provided, they will be represented as grey bars on the graphs.
 - If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication. (This file is also produced during DupLess first step)
 
 ---
@@ -56,7 +57,7 @@ DupLess workflow is composed of two main steps:
 
 
 **Other:**
-	-n/--no_plot				Skip the creation of the coverage plots
+	-n/--no_plot		 Skip the creation of the coverage plots
 
 	-s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:
                                      python DupLess.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
