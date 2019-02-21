@@ -2,7 +2,7 @@
 ## A tool to remove assembly heterozygous duplication based on blast and read coverage.
 
 Most of the currently available assemblers are designed to work on highly inbred, homozygous species and treats differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly. 
-For these cases, we created "DupLess”, a tool capable of detecting and removing the duplicated regions issued from heterozygosity.
+For these cases, we created "DupLess", a tool capable of detecting and removing the duplicated regions issued from heterozygosity.
 
 DupLess workflow is composed of two main steps:
  1. The detection, based on the coverage, of heterozygous regions in the assembly.
@@ -20,6 +20,9 @@ DupLess workflow is composed of two main steps:
 - **blastn v2.6.0+** or higher
 - **awk and sed**
 
+For a genome of 1Gbp, DupLess requires ~50 Gb of RAM.
+The running time is dependant on the fragmentation, an assembly with a lot of contigs will increase the running time significantly.
+
 ---
 
 ## Input Files:
@@ -31,7 +34,7 @@ DupLess workflow is composed of two main steps:
 
 **Optional**
 
-- A bed file contaning the gaps coordinates in the assembly. If provided, they will be represented as grey bars on the graphs.
+- A bed file containing the gaps coordinates in the assembly. If provided, they will be represented as grey bars on the graphs.
 - If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication. (This file is also produced during DupLess first step)
 
 ---
@@ -73,3 +76,10 @@ DupLess workflow is composed of two main steps:
 - The results of the blast between the heterozygous regions.
 - Graphs of the coverage along each sequences of the assembly.
 - A histogram of the coverage distribution.
+
+## Future work
+
+- Flag regions with half the coverage but no blast hits
+- Support long reads to realig to duplicated regions and detect misassemblies
+- Possibly: add Mummer to check how the regions around the duplications align to each other.
+- Add an option to remove whole contigs if the blast hit span > threshold% of the total length

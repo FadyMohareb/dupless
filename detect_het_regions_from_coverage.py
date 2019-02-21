@@ -202,6 +202,8 @@ def detect_genome_mode(bed_dataframe):
 
 
 
+# Try and catch needed here due to bug in python with multiprocessing
+# ctrl-c makes the child unjoinable and pool creates new workers instead of exiting
 def process_contig(contig_name):
     global BED_DF
     global GENOME_MODE
@@ -210,12 +212,16 @@ def process_contig(contig_name):
     global GAPS_DF
     global SKIP_PLOT
 
-    contig_df = BED_DF[BED_DF['contig'].isin([contig_name])]
-    starts, stops, window_medians, classifications = get_windows_medians_contig(contig_df, GENOME_MODE, WINDOW_SIZE)
-    if not(SKIP_PLOT):
-        create_plot_coverage(starts, window_medians, classifications, GENOME_MODE, contig_name, GAPS_DF, WINDOW_SIZE, OUTPUT_FOLDER)
-    create_bed_het_regions(contig_name, starts, stops, classifications, OUTPUT_FOLDER)
-
+    # try here because this funcion is used with pool
+    # the except KeyboardInterrupt will allow a gracefull exit with ctrl-c
+    try:
+        contig_df = BED_DF[BED_DF['contig'].isin([contig_name])]
+        starts, stops, window_medians, classifications = get_windows_medians_contig(contig_df, GENOME_MODE, WINDOW_SIZE)
+        if not(SKIP_PLOT):
+            create_plot_coverage(starts, window_medians, classifications, GENOME_MODE, contig_name, GAPS_DF, WINDOW_SIZE, OUTPUT_FOLDER)
+        create_bed_het_regions(contig_name, starts, stops, classifications, OUTPUT_FOLDER)
+    except KeyboardInterrupt:
+        return
 
 
 BED_DF = pd.DataFrame()
@@ -268,13 +274,21 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     try:
         pool = Pool(nbThreads)
         pool.map(process_contig, BED_DF['contig'].unique())
-    except:
-        print("Error during the processing of the contigs")
-        sys.exit(1)
-    # This ensure that the subprocesses are killed even if there is an error
-    finally:
         pool.close()
         pool.join()
+    except KeyboardInterrupt:
+        print("Caught KeyboardInterrupt, terminating workers")
+        pool.terminate()
+        pool.join()
+        sys.exit()
+    except:
+        print("Error during the processing of the contigs")
+        pool.terminate()
+        pool.join()
+        sys.exit()
+    # This ensure that the subprocesses are killed even if there is an error
+    #finally:
+        
     print("Contigs processed !\n")
 
     concat_bed_name = OUTPUT_FOLDER+"/Heterozygous_regions_ALL.bed"

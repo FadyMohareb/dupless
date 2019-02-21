@@ -21,10 +21,10 @@ def check_file(filename):
     file_ok = True
     error_mssg = ""
     if(filename == None):
-        error_mssg = "Error: file '"+filename+"' is missing."
+        error_mssg = "Error: file is missing."
         file_ok = False
     else:
         if not os.path.isfile(filename):
-            error_mssg = "Error: '"+filename+"' is not a file."
+            error_mssg = "Error: '"+str(filename)+"' is not a file."
             file_ok = False
     return file_ok, error_mssg
