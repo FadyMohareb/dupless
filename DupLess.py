@@ -5,16 +5,20 @@
 #       If long reads: align them to duplicated regions to check for misassemblies
 #       Correct coverage for edge effect on the end of the contigs (if paired ends) ?
 #       Add error trapping = check Popen output number and exit if error
-#       Have logs (running and error log from communicate()[1])
+#       Have logs (running and error log from communicate()[1]), with command used to launch DupLess
 #       should -no_plot also skip the histogram plotting ?
 #       Add threshold to remove whole contig if duplicated regions covers > threshold% of total length
 #       Remove only blast hit ? or remove whole hhet region ? 
+#       Add checks for samtools, bedtools, blastn, awk and sed...
+#       Add checks for het bed file format
+#       Try to reimplement finally for closing pools, now that the ctrl-c bug has been resolved
 
 # Dependencies:
 # bedtools
 # samtools 1.9 or higher (important for the "-o" parameter)
 # blastn
 # pandas, numpy, matplotlib, multiprocessing, getopt, biopython
+# sed and awk
 
 # For matplotlib.pyplot: needs python-tk: sudo apt-get install python-tk
 
@@ -58,6 +62,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     """
     From an assembly fasta and a bed of regions to remove, creates an haplotype fasta.
     Uses "bedtools maskfasta" and "sed" to remove the regions.
+    Also need "awk" to have each sequence on one line.
     """
     fasta_masked = output_folder+"/haplotypes/temp_masked.fasta"
     fasta_masked_oneLine = output_folder+"/haplotypes/temp_masked_oneLine.fasta"
@@ -100,6 +105,8 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         print(sys.exc_info()[0])
         sys.exit()
     
+    # remove the temp file fasta_masked
+    # move the fasta_masked_oneLine to the haplotype1 or 2 fasta
     try:
         pr = subprocess.Popen(["mv", fasta_masked_oneLine, hapname], shell=False)
         pr.communicate()
@@ -108,7 +115,6 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         print("Error for: " + " ".join(cmd))
         print(sys.exc_info()[0])
         sys.exit()
-    
     try:
         pr = subprocess.Popen(["rm", fasta_masked], shell=False)
         pr.communicate()
@@ -130,8 +136,8 @@ gaps_bed = None             # Optional. Draw gaps as grey bars on the graphs.
 output_folder = "./"
 nbThreads = 20
 blast_identity_threshold = 90   # Two regions will be considered duplicated if...
-blast_length_threshold = 0      # these two blast thresholds are met.
-het_bed = None                  # Created by the script. Bed defining the heterozygous region.
+blast_length_threshold = 0      # ...these two blast thresholds are met (min identity and min length).
+het_bed = None                  # Created by the script. Bed defining the heterozygous region. Can be used to try more than one blast thresholds without rerunning everything
 skip_het_dect = False           # Possibility to skip the first step (het detection) which is time consuming.
 skip_plot = False               # Skip the generation of the coverage plots
 
@@ -173,7 +179,7 @@ for o,a in opts:
         assert False, "Unhandled option !"
 
 
-# If we do not skip the het step:
+# If we do not skip the het detection step:
 if not skip_het_dect:
     # Then we need the coverage bed
     file_ok, error_mssg = ud.check_file(coverage_bed)
@@ -181,7 +187,7 @@ if not skip_het_dect:
         print("Error with option -b/--bed_cov: "+error_mssg)
         usage()
         sys.exit(2)
-    # And we stop if folder already exists
+    # And we stop if folder already exists (to avoid overwriting an already existing project)
     if(os.path.isdir(output_folder)):
         print("\nFolder '"+output_folder+"' already exists, stopping now...\n")
         sys.exit(2)
@@ -215,11 +221,12 @@ if((blast_length_threshold < 0)):
 #=================================================================
 #                          Main                                  =
 #=================================================================
+# Get the path to dupless, useful to call subscripts
 DupLess_folder = sys.path[0]
 
 for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
     try:
-        pr = subprocess.Popen(["mkdir", folder], stdout=subprocess.PIPE)
+        pr = subprocess.Popen(["mkdir", folder], shell=False, stdout=subprocess.PIPE)
         pr.communicate()
         ud.check_return_code(pr.returncode, "mkdir "+folder)
     except:
@@ -227,8 +234,10 @@ for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/
         print(sys.exc_info()[0])
         sys.exit()
 
-
+# Indexing the fasta, needed later on for extraction of het regions
+# Also a good way to check if samtools exists at the start of the script
 cmd = ["samtools", "faidx", assembly_name]
+print("Generating the index file for the fasta reference"+" ".join(cmd))
 try:
     pr = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
     pr.communicate()
@@ -243,9 +252,10 @@ if not skip_het_dect:
     # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
     het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder, nbThreads, skip_plot)
 
+# Check if the het_bed file exists (wether it has been created by the step before or just given by the user)
 file_ok, error_mssg = ud.check_file(het_bed)
 if file_ok:
-    # Launch pairwise blast comparison between the detected heterozygous regions to remove duplication
+    # Launch pairwise blast comparisons between the detected heterozygous regions to detect duplication
     dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLess_folder)
 
     # Filter the blasts by identity and length.
@@ -253,7 +263,7 @@ if file_ok:
     cmd_filter = ["python", DupLess_folder+"/filter_blast_results.py", output_folder+"/All_Blasts_scaffolds_coord.tab", str(blast_identity_threshold), str(blast_length_threshold), assembly_name, output_folder]
     print(" ".join(cmd_filter))
     try:
-        pr = subprocess.Popen(cmd_filter, stdout=subprocess.PIPE)
+        pr = subprocess.Popen(cmd_filter, shell=False, stdout=subprocess.PIPE)
         pr.communicate()
         ud.check_return_code(pr.returncode, " ".join(cmd_filter))
     except:

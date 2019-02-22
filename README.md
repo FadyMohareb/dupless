@@ -20,6 +20,14 @@ DupLess workflow is composed of two main steps:
 - **blastn v2.6.0+** or higher
 - **awk and sed**
 
+- To install samtools 1.9:
+	wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2
+	tar -vxjf samtools-1.9.tar.bz2
+	cd samtools-1.9
+	make
+	export PATH=/path/to/samtools/:$PATH
+
+
 For a genome of 1Gbp, DupLess requires ~50 Gb of RAM.
 The running time is dependant on the fragmentation, an assembly with a lot of contigs will increase the running time significantly.
 

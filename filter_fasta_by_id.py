@@ -40,4 +40,4 @@ with open(new_fasta_name, "w") as new_fasta:
             ID_found = True
 
 if not ID_found:
-    print("Warning: ID '"+ID+"' not found.")
+    print("Warning: ID '"+str(ID)+"' not found.")

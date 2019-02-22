@@ -286,8 +286,6 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
         pool.terminate()
         pool.join()
         sys.exit()
-    # This ensure that the subprocesses are killed even if there is an error
-    #finally:
         
     print("Contigs processed !\n")
 
@@ -296,8 +294,13 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     with open(concat_bed_name, "w") as concat_bed:
         # Combination of find and cat with "+" to avoid issue of "argument list too long"
         cmd = ["find", OUTPUT_FOLDER+"/individual_beds/", "-maxdepth", "1", "-type", "f", "-exec", "cat", "{}", "+"]
-        pr = subprocess.Popen(cmd, shell=False, stdout=concat_bed)
-        pr.communicate()
-        ud.check_return_code(pr.returncode, " ".join(cmd))
+        try:
+            pr = subprocess.Popen(cmd, shell=False, stdout=concat_bed)
+            pr.communicate()
+            ud.check_return_code(pr.returncode, " ".join(cmd))
+        except:
+            print("Error for: " + " ".join(cmd))
+            print(sys.exc_info()[0])
+            sys.exit()  
     print("Bed files concatenated to: "+concat_bed_name+"\n")
     return concat_bed_name

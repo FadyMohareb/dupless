@@ -52,7 +52,13 @@ def run_cmd(cmd):
     """
     Used by the pool the run these commands in parallel
     """
-    subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).communicate()
+    # Here the try and expect are used to avoid bug in python, when using multiprocessing, and trying to ctrl-c:
+    # Subprocesses do not return anything and the pool just creates the next worker
+    # We need to catch the keyboard exception here AND in the main thread to exit gracefully
+    try:
+        subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).communicate()
+    except KeyboardInterrupt:
+        return
 
 
 def get_assembly_coordinates_from_blast_results(region_name, blast_start, blast_stop):
@@ -111,24 +117,33 @@ def convert_region_coord_to_scaffold_coord(region_blasts_name, output_folder):
 
 
 
-
 def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLess_folder):
     """
     Main script to launch the comparison between the het regions.
     Writes the results of Blast in output_folder"/All_Blasts.tab"
     """
-    # Extract the heterozygous regions from the assembly and create a fasta file with it.
+    # Extract all the heterozygous regions from the assembly and create a fasta file with it.
     het_fasta_name = output_folder+"/assembly_HET_ONLY.fa"
 
     cmd = ["bedtools", "getfasta", "-fi", assembly_name, "-bed", het_bed, "-name", "-fo", het_fasta_name]
-    pr = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
-    pr.communicate()
-    ud.check_return_code(pr.returncode, " ".join(cmd))
+    try:
+        pr = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
+        pr.communicate()
+        ud.check_return_code(pr.returncode, " ".join(cmd))
+    except:
+        print("Error for: " + " ".join(cmd))
+        print(sys.exc_info()[0])
+        sys.exit()  
 
     cmd = ["samtools", "faidx", het_fasta_name]
-    pr = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
-    pr.communicate()
-    ud.check_return_code(pr.returncode, " ".join(cmd))
+    try:
+        pr = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
+        pr.communicate()
+        ud.check_return_code(pr.returncode, " ".join(cmd))
+    except:
+        print("Error for: " + " ".join(cmd))
+        print(sys.exc_info()[0])
+        sys.exit()  
 
     print("Blasting each heterozygous regions against the others, this could take a while....")
     filter_cmds = list()
@@ -143,6 +158,7 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
     # We do each step by batch to parallelise, all the extractions, then all the makeBlastDB, then all the megablasts
     het_fasta = SeqIO.parse(het_fasta_name, "fasta")
     for seq_record in het_fasta:
+        # Create the list of commands to use to process 1 region
         filter_fasta, extract, makeBlastDB, megablast = extract_and_blast(seq_record.name, het_fasta_name, output_folder, DupLess_folder)
         filter_cmds.append(filter_fasta)
         extract_cmds.append(extract)
@@ -150,26 +166,62 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
         megablast_cmds.append(megablast)
         n_process = n_process + 1
 
+        # If we get more commands than nbThreads specified, we launch them in parallel
         if n_process >= int(nbThreads):
-            pl.map(run_cmd, filter_cmds)
-            pl.map(run_cmd, extract_cmds)
-            pl.map(run_cmd, makeBlastDB_cmds)
-            pl.map(run_cmd, megablast_cmds)
+            # Bug in python: if ctrl-c during multiprocessing, the children becomes unjoinable
+            # To resolve this, have to add a keyboardInterrupt exception to both the main thread AND the subprocessess
+            try:
+                pl.map(run_cmd, filter_cmds)
+                pl.map(run_cmd, extract_cmds)
+                pl.map(run_cmd, makeBlastDB_cmds)
+                pl.map(run_cmd, megablast_cmds)
+            except KeyboardInterrupt:
+                print("Caught KeyboardInterrupt, terminating workers")
+                pl.terminate()
+                pl.join()
+                sys.exit()
+            except:
+                print("Error during the processing of the contigs:")
+                print(sys.exc_info()[0])
+                pl.terminate()
+                pl.join()
+                sys.exit()
 
             n_process = 0
             filter_cmds = list()
             extract_cmds = list()
             makeBlastDB_cmds = list()
             megablast_cmds = list()
-            process = subprocess.Popen("rm "+output_folder+"/temp/*", shell=True, stdout=subprocess.PIPE)
-            process.wait()
 
-    # Do the remaining commands (the ones remaining because n_process <= int(nbThreads):)
-    pl.map(run_cmd, filter_cmds)
-    pl.map(run_cmd, extract_cmds)
-    pl.map(run_cmd, makeBlastDB_cmds)
-    pl.map(run_cmd, megablast_cmds)
-    pl.map(run_cmd, remove_cmds)
+            cmd = "rm "+output_folder+"/temp/*"
+            try:
+                # The shell=True needed here because of the "*" (regex do not work with shell=False)
+                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+                process.communicate()
+            except:
+                print("Error for: " + cmd)
+                print(sys.exc_info()[0])
+                sys.exit()
+
+    # Do the remaining commands (the ones remaining because "n_process <= int(nbThreads)")
+    try:
+        pl.map(run_cmd, filter_cmds)
+        pl.map(run_cmd, extract_cmds)
+        pl.map(run_cmd, makeBlastDB_cmds)
+        pl.map(run_cmd, megablast_cmds)
+        pl.map(run_cmd, remove_cmds)
+    except KeyboardInterrupt:
+        print("Caught KeyboardInterrupt, terminating workers")
+        pl.terminate()
+        pl.join()
+        sys.exit()
+    except:
+        print("Error during the processing of the contigs:")
+        print(sys.exc_info()[0])
+        pl.terminate()
+        pl.join()
+        sys.exit()
+
 
     print("Blast done !\n")
 
@@ -182,9 +234,17 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
     print("Concatenating the blast results to "+region_blasts_name+" ...")
     with open(region_blasts_name, "w") as blasts_regions:
         cmd = ["find", output_folder+"/individual_blasts/", "-maxdepth", "1", "-type", "f", "-exec", "cat", "{}", "+"]
-        pr = subprocess.Popen(cmd, shell=False, stdout=blasts_regions)
-        pr.communicate()
-        ud.check_return_code(pr.returncode, " ".join(cmd))
+        try:
+            pr = subprocess.Popen(cmd, shell=False, stdout=blasts_regions)
+            pr.communicate()
+            ud.check_return_code(pr.returncode, " ".join(cmd))
+        except:
+            print("Error for: " + " ".join(cmd))
+            print(sys.exc_info()[0])
+            sys.exit()  
+        
         print("Blast files concatenated to: "+region_blasts_name)
 
+    # We need to output the scaffold coordinates for the next step
+    # The positions from the blast outputs are relative to the het regions
     convert_region_coord_to_scaffold_coord(region_blasts_name, output_folder)
