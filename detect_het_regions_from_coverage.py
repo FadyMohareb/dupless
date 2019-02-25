@@ -254,7 +254,7 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     if(gaps_bed != None):
         GAPS_DF = pd.read_csv(gaps_bed, sep='\t', index_col=False, names=['contig', 'start', 'stop'], header=None)
 
-    print("Reading coverage bed, this can take a while...")
+    print("\nReading coverage bed, this can take a while...")
     BED_DF = pd.read_csv(coverage_bed, sep='\t', index_col=False, names=['contig', 'position', 'coverage'], header=None)
     print("Done !\n")
 

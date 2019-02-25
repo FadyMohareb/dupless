@@ -75,7 +75,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         pr.communicate()
         ud.check_return_code(pr.returncode, " ".join(cmd_mask))
     except:
-        print("Error for: " + " ".join(cmd))
+        print("Error for: " + " ".join(cmd_mask))
         print(sys.exc_info()[0])
         sys.exit()
 
@@ -89,7 +89,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
             pr.communicate()
             ud.check_return_code(pr.returncode, cmd_oneLine)
         except:
-            print("Error for: " + " ".join(cmd))
+            print("Error for: " + " ".join(cmd_oneLine))
             print(sys.exc_info()[0])
             sys.exit()
 
@@ -101,7 +101,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         pr.communicate()
         ud.check_return_code(pr.returncode, cmd_sed)
     except:
-        print("Error for: " + " ".join(cmd))
+        print("Error for: " + " ".join(cmd_sed))
         print(sys.exc_info()[0])
         sys.exit()
     
@@ -112,7 +112,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         pr.communicate()
         ud.check_return_code(pr.returncode, "mv "+fasta_masked_oneLine+" "+hapname)
     except:
-        print("Error for: " + " ".join(cmd))
+        print("Error for: mv "+ fasta_masked_oneLine + " " + hapname)
         print(sys.exc_info()[0])
         sys.exit()
     try:
@@ -120,7 +120,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         pr.communicate()
         ud.check_return_code(pr.returncode, "rm "+fasta_masked)
     except:
-        print("Error for: " + " ".join(cmd))
+        print("Error for: rm " + fasta_masked)
         print(sys.exc_info()[0])
         sys.exit()
 
@@ -230,22 +230,13 @@ for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/
         pr.communicate()
         ud.check_return_code(pr.returncode, "mkdir "+folder)
     except:
-        print("Error for: " + " ".join(cmd))
+        print("Error during mkdir "+folder)
         print(sys.exc_info()[0])
         sys.exit()
 
 # Indexing the fasta, needed later on for extraction of het regions
 # Also a good way to check if samtools exists at the start of the script
-cmd = ["samtools", "faidx", assembly_name]
-print("Generating the index file for the fasta reference"+" ".join(cmd))
-try:
-    pr = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
-    pr.communicate()
-    ud.check_return_code(pr.returncode, " ".join(cmd))
-except:
-    print("Error for: " + " ".join(cmd))
-    print(sys.exc_info()[0])
-    sys.exit()
+ud.index_fasta_file(assembly_name)
 
 
 if not skip_het_dect:
@@ -267,7 +258,7 @@ if file_ok:
         pr.communicate()
         ud.check_return_code(pr.returncode, " ".join(cmd_filter))
     except:
-        print("Error for: " + " ".join(cmd))
+        print("Error for: " + " ".join(cmd_filter))
         print(sys.exc_info()[0])
         sys.exit()  
     print("Blast filtered !\n")
