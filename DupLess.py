@@ -6,12 +6,9 @@
 #       Correct coverage for edge effect on the end of the contigs (if paired ends) ?
 #       Add error trapping = check Popen output number and exit if error
 #       Have logs (running and error log from communicate()[1]), with command used to launch DupLess
-#       should -no_plot also skip the histogram plotting ?
 #       Add threshold to remove whole contig if duplicated regions covers > threshold% of total length
-#       Remove only blast hit ? or remove whole hhet region ? 
 #       Add checks for samtools, bedtools, blastn, awk and sed...
 #       Add checks for het bed file format
-#       Try to reimplement finally for closing pools, now that the ctrl-c bug has been resolved
 
 # Dependencies:
 # bedtools
@@ -50,7 +47,7 @@ def usage():
     print("     -i/--blast_identity         The minimum percentage of identity between the het region and the blast hit to consider it valid (default: 90, range 0 to 100).")
     print("     -l/--blast_length           The minimum length for the blast hit to be considered as valid (default=0).")
     print("")
-    print("     -n/--no_plot                Skip the creation of the coverage plots")
+    print("     -n/--no_plot                Skip the creation of all the plots")
     print("")
     print("     -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:")
     print("                                     python DupLess.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")

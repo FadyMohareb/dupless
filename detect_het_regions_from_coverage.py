@@ -263,9 +263,10 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     if(GENOME_MODE == None):
         GENOME_MODE = detect_genome_mode(BED_DF)
 
-    # Creates the histogram of the coverage, to visually check the chosen expected coverage (genome_mode)
-    bed_DF_hist = BED_DF[(BED_DF['coverage'] <= GENOME_MODE*2) & (BED_DF['coverage'] != 0)]
-    coverage_histogram(bed_DF_hist['coverage'], GENOME_MODE, OUTPUT_FOLDER)
+    if(SKIP_PLOT == False):
+        # Creates the histogram of the coverage, to visually check the chosen expected coverage (genome_mode)
+        bed_DF_hist = BED_DF[(BED_DF['coverage'] <= GENOME_MODE*2) & (BED_DF['coverage'] != 0)]
+        coverage_histogram(bed_DF_hist['coverage'], GENOME_MODE, OUTPUT_FOLDER)
 
     print("The mode is :"+str(GENOME_MODE))
 
