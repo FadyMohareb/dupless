@@ -4,7 +4,6 @@
 #       Do a better expected coverage calculation : detect two peaks and select one that is freq*2 from the other (can be an issue if more than two peaks)
 #       If long reads: align them to duplicated regions to check for misassemblies
 #       Correct coverage for edge effect on the end of the contigs (if paired ends) ?
-#       Add error trapping = check Popen output number and exit if error
 #       Have logs (running and error log from communicate()[1]), with command used to launch DupLess
 #       Add threshold to remove whole contig if duplicated regions covers > threshold% of total length
 #       Add checks for samtools, bedtools, blastn, awk and sed...
@@ -27,6 +26,14 @@ import os
 import detect_het_regions_from_coverage as dh
 import detect_duplicates_from_het_regions as dd
 import utils_dupless as ud
+
+VERSION = "1.0.0"
+
+def print_version():
+    """
+    Prints the version
+    """
+    print("DupLess v"+VERSION)
 
 
 def usage():
@@ -52,7 +59,8 @@ def usage():
     print("     -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:")
     print("                                     python DupLess.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")
     print("")
-    print("     -h/--help                   Print the usage and help.")
+    print("     -h/--help                   Print the usage and help and exit.")
+    print("     -v/--version                Print the version and exit.")
 
 
 def make_haplotype(hapname, assembly_name, bedname, output_folder):
@@ -139,8 +147,8 @@ skip_het_dect = False           # Possibility to skip the first step (het detect
 skip_plot = False               # Skip the generation of the coverage plots
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "t:w:b:a:c:g:o:s:i:l:nh", ["nThreads=", "window_size=", "bed_cov=", "assembly=", "expected_cov=", "bed_gaps=", 
-                                                                        "out_folder=", "skip_het_detection=", "blast_identity=", "blast_length=", "no_plot", "help"])
+    opts, args = getopt.getopt(sys.argv[1:], "t:w:b:a:c:g:o:s:i:l:nhv", ["nThreads=", "window_size=", "bed_cov=", "assembly=", "expected_cov=", "bed_gaps=", 
+                                                                        "out_folder=", "skip_het_detection=", "blast_identity=", "blast_length=", "no_plot", "help", "version"])
 except getopt.GetoptError as err:
     print(str(err))
     usage()
@@ -171,6 +179,9 @@ for o,a in opts:
         skip_plot = True
     elif o in ("-h", "--help"):
         usage()
+        sys.exit(1)
+    elif o in ("-v", "--version"):
+        print_version()
         sys.exit(1)
     else:
         assert False, "Unhandled option !"
@@ -234,7 +245,6 @@ for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/
 # Indexing the fasta, needed later on for extraction of het regions
 # Also a good way to check if samtools exists at the start of the script
 ud.index_fasta_file(assembly_name)
-
 
 if not skip_het_dect:
     # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
