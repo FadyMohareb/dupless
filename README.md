@@ -43,11 +43,15 @@ For samtools you may also have to install HTSlib (cf: https://www.biostars.org/p
 ## Input Files:
 
 **Required**
+
 - The assembly in fasta format.
+
 - A bed file with the coverage value for each base of the assembly.
 
 **Optional**
+
 - A bed file containing the gaps coordinates in the assembly. If provided, they will be represented as grey bars on the coverage graphs.
+
 - If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication. (This file is also produced during DupLess first step)
 
 **How to generate the coverage bed file**
@@ -84,20 +88,22 @@ bedtools genomecov -ibam genome_reads.sorted.bam -d > genome_reads.coverage
 
 
 **Other:**
+
 	-n/--no_plot		        Skip the creation of all plots.
 
 	-s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:
                                      python DupLess.py -s [het_regions.bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
 
-	-h/--help                   Print the usage and help.
+	-h/--help                   Print the usage and help and exit.
+     -v/--version                Print the version and exit.
 
 
 ## Output
 
-- Two fasta files containing the different versions of the duplications.
-- A bed file with the identified heterozygous regions.
-- The results of the blast between the heterozygous regions.
+- **Two fasta files containing the different versions of the duplications.**
+- A bed file with the identified heterozygous regions (useful for exploration of the regions).
 - Graphs of the coverage along each sequences of the assembly.
+- The results of the blast between the heterozygous regions.
 - A histogram of the coverage distribution.
 
 ---
