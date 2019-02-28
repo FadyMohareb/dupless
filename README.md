@@ -107,14 +107,9 @@ bedtools genomecov -ibam genome_reads.sorted.bam -d > genome_reads.coverage
 - Graphs of the coverage along each sequences of the assembly (see below).
 - The results of the blast between the heterozygous regions.
 
+![alt text]( ../exemple_output/Histogram_coverage.png "Histogram of coverage")
 
-<p align="center">
-<img src="../exemple_output/Histogram_coverage.png" height="500"/>
-</p>
-
-<p align="center">
-<img src="../exemple_output/Super_scaffold_1.png" height="500"/>
-</p>
+![alt text]( ../exemple_output/Super_scaffold_1.png "Graph of coverage along a sequence")
 
 ---
 
