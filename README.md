@@ -55,6 +55,7 @@ For samtools you may also have to install HTSlib (cf: https://www.biostars.org/p
 - If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication. (This file is also produced during DupLess first step)
 
 **How to generate the coverage bed file**
+
 You need to generate a file with the coverage value at each position (format: "sequence_name   position  coverage"). You can use any pipeline you want to generate this file.
 
 We are using the following pipeline to generate the coverage file (/!\ do not forget the "-d" option for "genomecov" as we need the coverage on every bases):
@@ -100,11 +101,20 @@ bedtools genomecov -ibam genome_reads.sorted.bam -d > genome_reads.coverage
 
 ## Output
 
-- **Two fasta files containing the different versions of the duplications.**
+- **Two fasta files containing the different versions of the deduplicated assembly.**
 - A bed file with the identified heterozygous regions (useful for exploration of the regions).
-- Graphs of the coverage along each sequences of the assembly.
+- A histogram of the coverage distribution, to help the user decide the expected coverage value (see below).
+- Graphs of the coverage along each sequences of the assembly (see below).
 - The results of the blast between the heterozygous regions.
-- A histogram of the coverage distribution.
+
+
+<p align="center">
+<img src="../exemple_output/Histogram_coverage.png" height="500"/>
+</p>
+
+<p align="center">
+<img src="../exemple_output/Super_scaffold_1.png" height="500"/>
+</p>
 
 ---
 

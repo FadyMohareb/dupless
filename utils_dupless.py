@@ -73,3 +73,21 @@ def check_old_bedtools_version():
         print(sys.exc_info()[0])
         sys.exit()
     return old
+
+
+def make_fasta_one_line(fasta_input, fasta_oneLine):
+    """
+    Transform to single line fasta to avoid empty lines after sed step
+    Indeed if a region is longer than the fasta wrapping (usually 80 caracters), then the fasta will contain empty lines.
+    awk from: https://stackoverflow.com/questions/15857088/remove-line-breaks-in-a-fasta-file, to avoid error with biopython: "fasta-2line"
+    """
+    with open(fasta_oneLine, "w") as fasta_oneLine_handle:
+        cmd_oneLine = "awk \'/^>/{print s? s\"\\n\"$0:$0;s=\"\";next}{s=s sprintf(\"%s\",$0)}END{if(s)print s}\' "+fasta_input
+        try:
+            pr = subprocess.Popen(cmd_oneLine, shell=True, stdout=fasta_oneLine_handle)
+            pr.communicate()
+            check_return_code(pr.returncode, cmd_oneLine)
+        except:
+            print("Error for: " + " ".join(cmd_oneLine))
+            print(sys.exc_info()[0])
+            sys.exit()

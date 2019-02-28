@@ -8,10 +8,11 @@
 #       Add threshold to remove whole contig if duplicated regions covers > threshold% of total length
 #       Add checks for samtools, bedtools, blastn, awk and sed...
 #       Add checks for het bed file format
+#       Add different output formats
 
 # Dependencies:
-# bedtools
-# samtools 1.9 or higher (important for the "-o" parameter)
+# bedtools v2.27 (lower version should now work)
+# samtools v1.9 or higher (important for the "-o" parameter)
 # blastn
 # pandas, numpy, matplotlib, multiprocessing, getopt, biopython
 # sed and awk
@@ -28,6 +29,7 @@ import detect_duplicates_from_het_regions as dd
 import utils_dupless as ud
 
 VERSION = "1.0.0"
+
 
 def print_version():
     """
@@ -84,19 +86,9 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         print(sys.exc_info()[0])
         sys.exit()
 
-    # Transform to single line fasta to avoid empty lines after sed step
-    # Indeed if a region is longer than the fasta wrapping (usually 80 caracters), then the fasta will contain empty lines.
-    # awk from: https://stackoverflow.com/questions/15857088/remove-line-breaks-in-a-fasta-file, to avoid error with biopython: "fasta-2line"
-    with open(fasta_masked_oneLine, "w") as fasta_masked_oneLine_handle:
-        cmd_oneLine = "awk \'/^>/{print s? s\"\\n\"$0:$0;s=\"\";next}{s=s sprintf(\"%s\",$0)}END{if(s)print s}\' "+fasta_masked
-        try:
-            pr = subprocess.Popen(cmd_oneLine, shell=True, stdout=fasta_masked_oneLine_handle)
-            pr.communicate()
-            ud.check_return_code(pr.returncode, cmd_oneLine)
-        except:
-            print("Error for: " + " ".join(cmd_oneLine))
-            print(sys.exc_info()[0])
-            sys.exit()
+    # Makes the fasta as one sequence per line, needed for sed below:
+    # else we have "empty/truncated" lines were we remove sequences
+    ud.make_fasta_one_line(fasta_masked, fasta_masked_oneLine)
 
     # Replace the "$" which marks the duplicate regions by an empty string (to remove them)
     cmd_sed = "sed -i 's/\$//g' "+fasta_masked_oneLine
