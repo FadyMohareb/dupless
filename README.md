@@ -107,9 +107,9 @@ bedtools genomecov -ibam genome_reads.sorted.bam -d > genome_reads.coverage
 - Graphs of the coverage along each sequences of the assembly (see below).
 - The results of the blast between the heterozygous regions.
 
-![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/exemple_output/Histogram_coverage.png "Histogram of coverage")
+![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/figures/Histogram_coverage.png "Histogram of coverage")
 
-![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/exemple_output/Super_scaffold_1.png "Graph of coverage along a sequence")
+![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/figures/Super_scaffold_1.png "Graph of coverage along a sequence")
 
 ---
 
@@ -121,7 +121,7 @@ The "test_data" folder contains to files:
 
 To test the installation of DupLess you can run the following command:
 ```
- /usr/bin/python2.7 /home/corentin/git_scripts/hetdect/DupLess.py -t 5 -o test_dupless -b illumina.coverage -a genome.fasta -w 500 -c 90 -i 80 -l 100
+/usr/bin/python2.7 /home/corentin/git_scripts/hetdect/DupLess.py -t 5 -o test_dupless -b illumina.coverage -a genome.fasta -w 500 -c 80 -i 80 -l 100
  ```
 
 You can compare your output to the one under "exemple_output"
