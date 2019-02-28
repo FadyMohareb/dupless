@@ -98,7 +98,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         pr.communicate()
         ud.check_return_code(pr.returncode, cmd_sed)
     except:
-        print("Error for: " + " ".join(cmd_sed))
+        print("Error for: " + cmd_sed)
         print(sys.exc_info()[0])
         sys.exit()
     

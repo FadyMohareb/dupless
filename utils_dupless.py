@@ -88,6 +88,6 @@ def make_fasta_one_line(fasta_input, fasta_oneLine):
             pr.communicate()
             check_return_code(pr.returncode, cmd_oneLine)
         except:
-            print("Error for: " + " ".join(cmd_oneLine))
+            print("Error for: " + cmd_oneLine)
             print(sys.exc_info()[0])
             sys.exit()

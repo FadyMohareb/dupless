@@ -186,9 +186,9 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
         try:
             pr = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
             pr.communicate()
-            ud.check_return_code(pr.returncode, " ".join(cmd))
+            ud.check_return_code(pr.returncode, cmd)
         except:
-            print("Error for: " + " ".join(cmd))
+            print("Error for: " + cmd)
             print(sys.exc_info()[0])
             sys.exit()
 
