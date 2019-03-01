@@ -28,13 +28,16 @@ import detect_het_regions_from_coverage as dh
 import detect_duplicates_from_het_regions as dd
 import utils_dupless as ud
 
+
+global VERSION
 VERSION = "1.0.0"
 
 
 def print_version():
     """
-    Prints the version
+    Prints the version.
     """
+    global VERSION
     print("DupLess v"+VERSION)
 
 
@@ -44,14 +47,15 @@ def usage():
     """
     print("\npython DupLess.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]\n")
     print("\nOptions:\n")
-    print("     -t/--nThreads               The number of threads (default 20).")
-    print("     -o/--out_folder             The output folder (default is the current directory).")
+    print("     -t/--nThreads               The number of threads (default 10).")
+    print("     -o/--out_folder             The output folder (default is './DupLess_out/').")
     print("")
-    print("     -b/--bed_cov                The bed file containing the coverage for each position (can be generated with bedtools genomecov).")
-    print("     -a/--assembly               The assembly corresponding to the bed coverage in fasta format.")
+    print("     -b/--bed_cov                REQUIRED: The bed file containing the coverage for each position (can be generated with bedtools genomecov).")
+    print("     -a/--assembly               REQUIRED: The assembly corresponding to the bed coverage in fasta format.")
     print("     -g/--bed_gaps               A bed file contaning the gaps along the genome. If given, the graphs will contain a grey background where the gaps are.")
     print("     -w/--window_size            The size of the window. The value of the read coverage will be the median of the values inside each window (default: 1000).")
     print("     -c/--expected_cov           The expected read coverage along the genome. The homozygosity / heterozygosity will be determined based on this value.")
+    print("                                 You can determine the value to use by plotting the coverage distribution. It should correspond to the homozygous peak")
     print("                                 If no value is given, it will be based on the mode of the coverage distribution (not reliable if high heterozygosity).")
     print("     -i/--blast_identity         The minimum percentage of identity between the het region and the blast hit to consider it valid (default: 90, range 0 to 100).")
     print("     -l/--blast_length           The minimum length for the blast hit to be considered as valid (default=0).")
@@ -68,7 +72,7 @@ def usage():
 def make_haplotype(hapname, assembly_name, bedname, output_folder):
     """
     From an assembly fasta and a bed of regions to remove, creates an haplotype fasta.
-    Uses "bedtools maskfasta" and "sed" to remove the regions.
+    Use "bedtools maskfasta" and "sed" to remove the regions.
     Also need "awk" to have each sequence on one line.
     """
     fasta_masked = output_folder+"/haplotypes/temp_masked.fasta"
@@ -103,8 +107,10 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         print(sys.exc_info()[0])
         sys.exit()
     
+    # Cleaning:
     # remove the temp file fasta_masked
     # move the fasta_masked_oneLine to the haplotype1 or 2 fasta
+    # remove the backup made by sed
     try:
         pr = subprocess.Popen(["mv", fasta_masked_oneLine, hapname], shell=False)
         pr.communicate()
@@ -113,14 +119,9 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         print("Error for: mv "+ fasta_masked_oneLine + " " + hapname)
         print(sys.exc_info()[0])
         sys.exit()
-    try:
-        pr = subprocess.Popen(["rm", fasta_masked], shell=False)
-        pr.communicate()
-        ud.check_return_code(pr.returncode, "rm "+fasta_masked)
-    except:
-        print("Error for: rm " + fasta_masked)
-        print(sys.exc_info()[0])
-        sys.exit()
+
+    ud.remove_file(fasta_masked)
+    ud.remove_file(fasta_masked_oneLine+".dupless_sed_backup")
 
 
 #=================================================================
@@ -131,8 +132,8 @@ coverage_bed = None         # Bed file with the coverage value for each position
 assembly_name = None        # Assembly in fasta format, used to extract the het regions and also check the scaffold lengths.
 expected_coverage = None    # Any window with coverage < expected_cov/1.5 will be considered as heterozygous.
 gaps_bed = None             # Optional. Draw gaps as grey bars on the graphs.
-output_folder = "./"
-nbThreads = 20
+output_folder = "./DupLess_out/"
+nbThreads = 10
 blast_identity_threshold = 90   # Two regions will be considered duplicated if...
 blast_length_threshold = 0      # ...these two blast thresholds are met (min identity and min length).
 het_bed = None                  # Created by the script. Bed defining the heterozygous region. Can be used to try more than one blast thresholds without rerunning everything
@@ -258,6 +259,12 @@ if file_ok:
     print("Haplotype 1 generated in :" + output_folder+"/haplotypes/haplotype1.fasta")
     make_haplotype(output_folder+"/haplotypes/haplotype2.fasta", assembly_name, output_folder+"/toRemoveFromhap2.bed", output_folder)
     print("Haplotype 2 generated in :" + output_folder+"/haplotypes/haplotype2.fasta")
+
+    # Cleaning the intermediate files:
+    ud.remove_file(output_folder+"/All_Blasts_region_coord.tab")
+    ud.remove_file(output_folder+"/assembly_HET_ONLY.fa")
+    ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.fai")
+    ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.dupless_sed_backup")
 else:
     print("Error with the heterozygous bed: "+error_mssg)
     usage()

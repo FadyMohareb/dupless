@@ -271,7 +271,7 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     print("The mode is :"+str(GENOME_MODE))
 
     print("Processing the contigs... (Creating graphs and bed files)")
-    # Multiprocessing, we process contigs in parallel
+    # Multiprocessing, we process each contig in parallel
     try:
         pool = Pool(nbThreads)
         pool.map(process_contig, BED_DF['contig'].unique())

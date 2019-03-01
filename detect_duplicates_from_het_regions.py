@@ -211,8 +211,9 @@ def concatenate_blast_results(output_folder):
 # Used from "DupLess.py", used after "detect_dupl_regions()" 
 def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_threshold, assembly, output_folder):
     """
-    Filter the blast results on identity and length
+    Filter the blast results on identity and length.
     Write the valid blast hits to "toRemove1.bed" and "toRemove2.bed"
+    These files will contain the regions to remove from the assembly on each haplotype.
     """
 
     file_ok, error_mssg =  ud.check_file(blast_filename)
@@ -245,6 +246,9 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
         with open(toRemovehap1_name, "a") as hap1, open(toRemovehap2_name, "a") as hap2:
             for blast in all_blasts:
                 tabs = blast.split("\t")
+                # tabs[2] contains the blast identity
+                # tabs[3] contains the length of the blast hit
+                # For the output format 6 (which is used by DupLess)
                 if((float(tabs[2]) >= blast_identity_threshold) and (float(tabs[3]) >= blast_length_threshold)):
                     query_name = tabs[0]
                     subject_name = tabs[1]
@@ -317,7 +321,6 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
     extract_cmds = list()       # Extract the region
     makeBlastDB_cmds = list()   # Create a copy of the heterozygous regions fasta without the region and create a database
     megablast_cmds = list()     # Blast the region against the database
-    remove_cmds = list()        # Remove the filtered copy
     n_process = 0
 
     pl = Pool(nbThreads)
@@ -360,15 +363,8 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
             makeBlastDB_cmds = list()
             megablast_cmds = list()
 
-            cmd = "rm "+output_folder+"/temp/*"
-            try:
-                # The shell=True needed here because of the "*" (regex do not work with shell=False)
-                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-                process.communicate()
-            except:
-                print("Error for: " + cmd)
-                print(sys.exc_info()[0])
-                sys.exit()
+            # We empty the temp folder as we go along, this avoid creating a temp folder with a lot of files
+            ud.empty_folder(output_folder+"/temp/")
 
     # Do the remaining commands (the ones remaining because "n_process <= int(nbThreads)")
     try:
@@ -376,7 +372,6 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
         pl.map(run_cmd, extract_cmds)
         pl.map(run_cmd, makeBlastDB_cmds)
         pl.map(run_cmd, megablast_cmds)
-        pl.map(run_cmd, remove_cmds)
     except KeyboardInterrupt:
         print("Caught KeyboardInterrupt, terminating workers")
         pl.terminate()
@@ -388,6 +383,8 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
         pl.terminate()
         pl.join()
         sys.exit()
+    
+    ud.empty_folder(output_folder+"/temp/")
 
     print("Blast done !\n")
     pl.close()

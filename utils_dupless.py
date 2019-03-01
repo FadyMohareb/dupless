@@ -4,6 +4,7 @@ import sys
 import os
 import subprocess
 
+
 def check_return_code(code, cmd):
     if(code != 0):
         print("\nAn error occured during the following command:")
@@ -91,3 +92,33 @@ def make_fasta_one_line(fasta_input, fasta_oneLine):
             print("Error for: " + cmd_oneLine)
             print(sys.exc_info()[0])
             sys.exit()
+
+
+def remove_file(filename):
+    """
+    Try to remove a file.
+    Do not exit if fails.
+    """
+    try:
+        pr = subprocess.Popen(["rm", filename], shell=False)
+        pr.communicate()
+        #ud.check_return_code(pr.returncode, "rm "+filename)
+    except:
+        print("Error for: rm " + filename)
+        print(sys.exc_info()[0])
+
+
+def empty_folder(folder):
+    """
+    Removes all the files in a folder.
+    Used to empty the temp file during the blast step.
+    """
+    cmd = "rm "+folder+"/*"
+    try:
+        # The shell=True needed here because of the "*" (regex do not work with shell=False)
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        process.communicate()
+    except:
+        print("Error for: " + cmd)
+        print(sys.exc_info()[0])
+        sys.exit()
