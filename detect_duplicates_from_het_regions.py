@@ -34,6 +34,7 @@ def filter_fasta_file(ID):
     global HET_FASTA_NAME
     global OUTPUT_FOLDER
 
+    # The fasta with the sequence correspond to "ID" removed, it will be used to make the blast database
     filtered_fasta = OUTPUT_FOLDER+"/temp/Het_regions_filtered_"+ID+".fasta"
 
     file_ok, error_mssg = ud.check_file(HET_FASTA_NAME)
@@ -41,11 +42,11 @@ def filter_fasta_file(ID):
         print(error_mssg)
         sys.exit(2)
 
-    # ======================= Main ==================================
     old_fasta = SeqIO.parse(HET_FASTA_NAME, "fasta")
     ID = ID.rstrip("\n")
     ID_found = False
 
+    # In a loop, we write all the sequences except the one with the ID
     with open(filtered_fasta, "w") as new_fasta:
         for seq_record in old_fasta:
             # If match, do nothing, else write the sequence
@@ -64,8 +65,8 @@ def filter_fasta_file(ID):
 def extract_and_blast(region, het_fasta, output_folder):
     """
     Creates commands for blasting a region (format "name:start-stop") against all the other het regions (needs a fasta file with all the het regions "het fasta").
+    This will be use with multiprocessing
     Returns the commands (strings) to:
-        Remove the het regions from the het fasta.
         Extract the het region from the het fasta.
         Create the blast DB from the filtered het fasta.
         Blast the het region against the blast DB.
@@ -75,16 +76,13 @@ def extract_and_blast(region, het_fasta, output_folder):
     region_temp_blastdb = output_folder+"/temp/"+region+"_temp.blastdb"
     # We remove the sequence from the list of het sequences to avoid self hit with blast.
     filtered_fasta = output_folder+"/temp/Het_regions_filtered_"+region+".fasta"
-
-    #filter_fasta = "python "+DupLess_folder+"/filter_fasta_by_id.py "+het_fasta+" "+filtered_fasta+" "+region
-    # To change as this is not needed anymore, we use a function rather than a subscript (more secure, stable)
-    filter_fasta = region
     
+    # List of commands that will be run in parallel
     extract = "samtools faidx "+het_fasta+" "+region+" -o "+region_temp_fasta
     makeBlastDB = "makeblastdb -in "+filtered_fasta+" -input_type fasta -out "+region_temp_blastdb+" -dbtype nucl"
     megablast = "blastn -task megablast -db "+region_temp_blastdb+" -query "+region_temp_fasta+" -outfmt 6 -out "+output_folder+"/individual_blasts/"+region+".tab -max_target_seqs 1 -max_hsps 1"
 
-    return filter_fasta, extract, makeBlastDB, megablast
+    return extract, makeBlastDB, megablast
 
 
 
@@ -328,9 +326,13 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
     # We do each step by batch to parallelise, all the extractions, then all the makeBlastDB, then all the megablasts
     het_fasta = SeqIO.parse(HET_FASTA_NAME, "fasta")
     for seq_record in het_fasta:
-        # Create the list of commands to use to process 1 region
-        filter_fasta, extract, makeBlastDB, megablast = extract_and_blast(seq_record.name, HET_FASTA_NAME, output_folder)
-        filter_cmds.append(filter_fasta)
+        # Create the list of commands to process 1 region:
+        # 1) filter region from the fasta (to make blastdb and avoid self hits)
+        # 2) extract the region from the fasta
+        # 3) make the blast database form filtered fasta
+        # 4) command to launch megablast between region and blast database
+        extract, makeBlastDB, megablast = extract_and_blast(seq_record.name, HET_FASTA_NAME, output_folder)
+        filter_cmds.append(seq_record.name)
         extract_cmds.append(extract)
         makeBlastDB_cmds.append(makeBlastDB)
         megablast_cmds.append(megablast)

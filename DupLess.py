@@ -223,10 +223,7 @@ if((blast_length_threshold < 0)):
 #=================================================================
 #                          Main                                  =
 #=================================================================
-# Get the path to dupless, useful to call subscripts 
-# Not needed anymore, as the subscripts became functions
-#DupLess_folder = sys.path[0]
-
+# Creating the output folder architecture
 for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
     try:
         pr = subprocess.Popen(["mkdir", folder], shell=False, stdout=subprocess.PIPE)
@@ -257,9 +254,7 @@ if file_ok:
     # Create the haplotype from the bed files resulting from blast filtration.
     print("Generating the haplotype fasta files from the blast results...")
     make_haplotype(output_folder+"/haplotypes/haplotype1.fasta", assembly_name, output_folder+"/toRemoveFromhap1.bed", output_folder)
-    print("Haplotype 1 generated in :" + output_folder+"/haplotypes/haplotype1.fasta")
     make_haplotype(output_folder+"/haplotypes/haplotype2.fasta", assembly_name, output_folder+"/toRemoveFromhap2.bed", output_folder)
-    print("Haplotype 2 generated in :" + output_folder+"/haplotypes/haplotype2.fasta")
 
     # Cleaning the intermediate files:
     ud.remove_file(output_folder+"/All_Blasts_region_coord.tab")
@@ -272,3 +267,5 @@ else:
     sys.exit(2)
 
 print("Done !\n")
+print("Haplotype 1 generated in :" + output_folder+"/haplotypes/haplotype1.fasta")
+print("Haplotype 2 generated in :" + output_folder+"/haplotypes/haplotype2.fasta")
