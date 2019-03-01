@@ -91,7 +91,8 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     ud.make_fasta_one_line(fasta_masked, fasta_masked_oneLine)
 
     # Replace the "$" which marks the duplicate regions by an empty string (to remove them)
-    cmd_sed = "sed -i 's/\$//g' "+fasta_masked_oneLine
+    # The backup extension is required for Mac OS ("-i 'backup' -e" should make it work on both GNU and Mac)
+    cmd_sed = "sed -i'.dupless_sed_backup' -e 's/\$//g' "+fasta_masked_oneLine
     print("\t"+cmd_sed)
     try:
         pr = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
@@ -249,18 +250,7 @@ if file_ok:
     dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLess_folder)
 
     # Filter the blasts by identity and length.
-    print("Filtering blast results with "+str(blast_identity_threshold)+"% identity and min length of "+str(blast_length_threshold)+" bp :")
-    cmd_filter = ["python", DupLess_folder+"/filter_blast_results.py", output_folder+"/All_Blasts_scaffolds_coord.tab", str(blast_identity_threshold), str(blast_length_threshold), assembly_name, output_folder]
-    print(" ".join(cmd_filter))
-    try:
-        pr = subprocess.Popen(cmd_filter, shell=False, stdout=subprocess.PIPE)
-        pr.communicate()
-        ud.check_return_code(pr.returncode, " ".join(cmd_filter))
-    except:
-        print("Error for: " + " ".join(cmd_filter))
-        print(sys.exc_info()[0])
-        sys.exit()  
-    print("Blast filtered !\n")
+    dd.filter_blast_results(output_folder+"/All_Blasts_scaffolds_coord.tab", blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)
 
     # Create the haplotype from the bed files resulting from blast filtration.
     print("Generating the haplotype fasta files from the blast results...")
