@@ -17,13 +17,17 @@ DupLess workflow is composed of two main steps:
 
 DupLess is compatible with Mac and Linux.
 
-You will need to have the following dependancies installed:
+You will need to have the following dependancies:
+
+**Note:** The following python packages are already built-in from python2.7 and do not need to be installed: getopt, subprocess, multiprocessing, sys and os.
+**Note:** awk and sed should also be available on most systems.
+
 - **Python v2 or v3**
-- **The following python packages:** numpy, pandas, biopython, matplotlib.pyplot, getopt, subprocess, multiprocessing, sys, os.
-- **samtools v1.9** or higher (/!\ DupLess will not work with version prior to 1.9, as it needs the "-o" parameter)
-- **bedtools v2.27.1** or higher (lower versions should also work now, but only v2.26 has been tested)
-- **blastn v2.6.0+** or higher
-- **awk and sed**
+- **The following python packages:** [numpy](http://www.numpy.org/ "Numpy Homepage"), [pandas](https://pandas.pydata.org/ "Pandas Homepage"), [biopython](https://biopython.org/ "biopython Homepage"), [matplotlib.pyplot](https://matplotlib.org/ "Matplotlib Homepage"), getopt, subprocess, multiprocessing, sys, os.
+- [samtools](http://www.htslib.org/ "samtools Homepage") v1.9 or higher (/!\ DupLess will not work with version prior to 1.9, as it needs the "-o" parameter)
+- [bedtools](https://bedtools.readthedocs.io/en/latest/ "Bedtools Homepage") v2.27.1 or higher (lower versions should also work now, but only v2.26 has been tested)
+- [blastn](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download "Blast download page") v2.6.0+ or higher
+- **awk** and **sed**
 
 
 ## Installation
@@ -33,12 +37,6 @@ You will need to have the following dependancies installed:
      git clone https://github.com/MCorentin/DupLess
      cd DupLess
      python DupLess.py --help
-```
-
-- To install python packages the easiest way is to use "pip" or "pip3" (depending on your version of python):
-```
-     pip install pandas
-     pip install numpy
 ```
 
 - To install samtools 1.9 (version 1.9 is not yet available from "apt-get install"):
@@ -65,7 +63,7 @@ The "test_data" folder contains to files:
 To test if your DupLess installation works you can run the following command:
 ```
      /usr/bin/python2.7 /home/corentin/git_scripts/hetdect/DupLess.py -t 5 -o test_dupless -b illumina.coverage -a genome.fasta -w 500 -c 80 -i 80 -l 100
- ```
+```
 
 You can compare your output to the one under "exemple_output".
 
@@ -134,9 +132,9 @@ You can compare your output to the one under "exemple_output".
 
 ---
 
-# Running DupLess on your own assembly:
+## Running DupLess on your own assembly:
 
-## How to generate the coverage bed file:
+### How to generate the coverage bed file:
 
 You need to generate a file with the coverage value at each position (format: "sequence_name   position  coverage"). You can use any pipeline you want to generate this file. We used the following pipeline to generate the coverage files durnig our testing (/!\ do not forget the "-d" option for "genomecov" as DupLess needs the coverage on every bases):
 ```
@@ -148,7 +146,7 @@ You need to generate a file with the coverage value at each position (format: "s
 
 You can then use "genome_reads.coverage" with the "-b/--bed_cov" parameter. 
 
-## Choose the right value for "-c/--expected_cov":
+### Choose the right value for "-c/--expected_cov":
 
 The expected coverage should be the coverage corresponding to the homozygous regions. To choose it you can plot the coverage distribution from the coverage file.
 
@@ -162,7 +160,7 @@ If your genome is heterozygous you should obtain two peaks (see graph below):
 
 The second peak corresponds to the homozygous regions, and the value on the x-axis for the maximum of this peak corresponds to the homozyous coverage.
 
-## Trying different blast thresholds:
+### Trying different blast thresholds:
 
 You may want to try different blast thresholds as this will modify the sensitivity of DupLess. We implemented the "-s/--skip_het_detection" parameter for this purpose, so you do not have to run the whole pipeline again. Or if you already have a file with the position of the sequences where you expect duplications.
 
@@ -180,6 +178,7 @@ You can use the bed file produced by a previous run of DupLess with the "-s/--sk
 - Add an option to remove whole contigs if the blast hit span > threshold% of the total length.
 - Improve speed.
 - Flag regions with half the coverage but no blast hits.
+
 
 ## Performances
 
