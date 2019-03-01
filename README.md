@@ -19,27 +19,26 @@ DupLess is compatible with Mac and Linux.
 
 You will need to have the following dependancies:
 
-**Note:** The following python packages are already built-in from python2.7 and do not need to be installed: getopt, subprocess, multiprocessing, sys and os.
-**Note:** awk and sed should also be available on most systems.
+**Note:** The following python packages are already built-in from python2.7 and do not need to be installed: getopt, subprocess, multiprocessing, sys and os. Moreover, **awk** and **sed** should also be available on most systems.
 
 - **Python v2 or v3**
 - **The following python packages:** [numpy](http://www.numpy.org/ "Numpy Homepage"), [pandas](https://pandas.pydata.org/ "Pandas Homepage"), [biopython](https://biopython.org/ "biopython Homepage"), [matplotlib.pyplot](https://matplotlib.org/ "Matplotlib Homepage"), getopt, subprocess, multiprocessing, sys, os.
-- [samtools](http://www.htslib.org/ "samtools Homepage") v1.9 or higher (/!\ DupLess will not work with version prior to 1.9, as it needs the "-o" parameter)
-- [bedtools](https://bedtools.readthedocs.io/en/latest/ "Bedtools Homepage") v2.27.1 or higher (lower versions should also work now, but only v2.26 has been tested)
-- [blastn](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download "Blast download page") v2.6.0+ or higher
+- [samtools v1.9](http://www.htslib.org/ "samtools Homepage") or higher (/!\ DupLess will not work with version prior to 1.9, as it needs the "-o" parameter)
+- [bedtools v2.27.1](https://bedtools.readthedocs.io/en/latest/ "Bedtools Homepage") or higher (lower versions should also work now, but only v2.26 has been tested)
+- [blastn v2.6.0+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download "Blast download page") or higher
 - **awk** and **sed**
 
 
 ## Installation
 
-- DupLess is a collection of python scripts, no installation is needed. You just have to clone the repository (or directly download the python files) and run "python DupLess.py" to use it.
+DupLess is a collection of python scripts, no installation is needed. You just have to clone the repository (or directly download the python files) and run "python DupLess.py" to use it.
 ```
      git clone https://github.com/MCorentin/DupLess
      cd DupLess
      python DupLess.py --help
 ```
 
-- To install samtools 1.9 (version 1.9 is not yet available from "apt-get install"):
+To install samtools 1.9 (version 1.9 is not yet available from "apt-get install"):
 ```
 	wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2
 	tar -vxjf samtools-1.9.tar.bz2
