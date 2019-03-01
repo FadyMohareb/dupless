@@ -61,7 +61,7 @@ def filter_fasta_file(ID):
 
 
 
-def extract_and_blast(region, het_fasta, output_folder, DupLess_folder):
+def extract_and_blast(region, het_fasta, output_folder):
     """
     Creates commands for blasting a region (format "name:start-stop") against all the other het regions (needs a fasta file with all the het regions "het fasta").
     Returns the commands (strings) to:
@@ -285,7 +285,7 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
 
 
 
-def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLess_folder):
+def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
     """
     Main script to launch the comparison between the het regions.
     Writes the results of Blast in: "output_folder/individual_blasts/"
@@ -329,7 +329,7 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLes
     het_fasta = SeqIO.parse(HET_FASTA_NAME, "fasta")
     for seq_record in het_fasta:
         # Create the list of commands to use to process 1 region
-        filter_fasta, extract, makeBlastDB, megablast = extract_and_blast(seq_record.name, HET_FASTA_NAME, output_folder, DupLess_folder)
+        filter_fasta, extract, makeBlastDB, megablast = extract_and_blast(seq_record.name, HET_FASTA_NAME, output_folder)
         filter_cmds.append(filter_fasta)
         extract_cmds.append(extract)
         makeBlastDB_cmds.append(makeBlastDB)

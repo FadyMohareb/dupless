@@ -95,7 +95,7 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
     ud.make_fasta_one_line(fasta_masked, fasta_masked_oneLine)
 
     # Replace the "$" which marks the duplicate regions by an empty string (to remove them)
-    # The backup extension is required for Mac OS ("-i 'backup' -e" should make it work on both GNU and Mac)
+    # The backup extension is required for Mac OS ("-i'backup' -e" should work on both GNU and Mac)
     cmd_sed = "sed -i'.dupless_sed_backup' -e 's/\$//g' "+fasta_masked_oneLine
     print("\t"+cmd_sed)
     try:
@@ -108,8 +108,8 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         sys.exit()
     
     # Cleaning:
+    # move the fasta_masked_oneLine to the haplotype(1/2).fasta
     # remove the temp file fasta_masked
-    # move the fasta_masked_oneLine to the haplotype1 or 2 fasta
     # remove the backup made by sed
     try:
         pr = subprocess.Popen(["mv", fasta_masked_oneLine, hapname], shell=False)
@@ -223,8 +223,9 @@ if((blast_length_threshold < 0)):
 #=================================================================
 #                          Main                                  =
 #=================================================================
-# Get the path to dupless, useful to call subscripts
-DupLess_folder = sys.path[0]
+# Get the path to dupless, useful to call subscripts 
+# Not needed anymore, as the subscripts became functions
+#DupLess_folder = sys.path[0]
 
 for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
     try:
@@ -248,7 +249,7 @@ if not skip_het_dect:
 file_ok, error_mssg = ud.check_file(het_bed)
 if file_ok:
     # Launch pairwise blast comparisons between the detected heterozygous regions to detect duplication
-    dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads, DupLess_folder)
+    dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads)
 
     # Filter the blasts by identity and length.
     dd.filter_blast_results(output_folder+"/All_Blasts_scaffolds_coord.tab", blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)

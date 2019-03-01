@@ -15,7 +15,7 @@ DupLess workflow is composed of two main steps:
 
 ## Dependencies
 
-DupLess is compatible with Mac and Linux.
+DupLess is supported on Mac and Linux.
 
 You will need to have the following dependancies:
 
@@ -133,7 +133,7 @@ You can compare your output to the one under "exemple_output".
 
 ## Running DupLess on your own assembly:
 
-### How to generate the coverage bed file:
+### How to generate the coverage bed file ("-b/--bed_cov" option):
 
 You need to generate a file with the coverage value at each position (format: "sequence_name   position  coverage"). You can use any pipeline you want to generate this file. We used the following pipeline to generate the coverage files durnig our testing (/!\ do not forget the "-d" option for "genomecov" as DupLess needs the coverage on every bases):
 ```
@@ -145,7 +145,7 @@ You need to generate a file with the coverage value at each position (format: "s
 
 You can then use "genome_reads.coverage" with the "-b/--bed_cov" parameter. 
 
-### Choose the right value for "-c/--expected_cov":
+### How to choose the right value for the expected coverage ("-c/--expected_cov" option):
 
 The expected coverage should be the coverage corresponding to the homozygous regions. To choose it you can plot the coverage distribution from the coverage file.
 
@@ -184,5 +184,3 @@ You can use the bed file produced by a previous run of DupLess with the "-s/--sk
 For a genome of 1Gbp, DupLess requires ~50 Gb of RAM.
 
 For running time, the bottleneck is the pairwise blasting of heterozygous regions, an assembly with a lot of regions will increase the running time significantly.
-
----
