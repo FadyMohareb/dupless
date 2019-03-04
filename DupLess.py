@@ -10,11 +10,12 @@
 #       Add checks for het bed file format
 #       Add different output formats
 
+
 # Dependencies:
 # bedtools v2.27 (lower version should now work)
 # samtools v1.9 or higher (important for the "-o" parameter)
-# blastn
-# pandas, numpy, matplotlib, multiprocessing, getopt, biopython
+# blastn v2.6.0+
+# pandas, numpy, matplotlib, multiprocessing, getopt, biopython, sys, os, subprocess
 # sed and awk
 
 # For matplotlib.pyplot: needs python-tk: sudo apt-get install python-tk
@@ -63,10 +64,10 @@ def usage():
     print("     -n/--no_plot                Skip the creation of all the plots")
     print("")
     print("     -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:")
-    print("                                     python DupLess.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")
+    print("                                      python DupLess.py -s [het_regions_bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]")
     print("")
     print("     -f/--filter_blast_only      Skip the detection of the heterozygous regions AND the pairwise alignment. If so, you must provide a blast ouput with -oufmt 6:")
-    print("                                     python DupLess.py -t [nb_threads] -a [assembly.fasta] -f [blast_output] -i [min_blast_identity] -l [min_blast_length] -o [output_folder] ")
+    print("                                      python DupLess.py -f [blast_output] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]")
     print("")
     print("     -h/--help                   Print the usage and help and exit.")
     print("     -v/--version                Print the version and exit.")

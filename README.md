@@ -7,6 +7,7 @@ For these cases, we created "DupLess", a tool capable of detecting and removing 
 
 ---
 
+
 ## Dependencies
 
 DupLess is supported on Mac and Linux.
@@ -77,8 +78,8 @@ You can compare your output to the one under "exemple_output".
 
 - If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication. (This file is also produced during DupLess first step)
 
-
 ---
+
 
 ## Usage
 
@@ -105,10 +106,10 @@ You can compare your output to the one under "exemple_output".
 	-n/--no_plot		        Skip the creation of all plots.
 
 	-s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:
-                                   python DupLess.py -s [het_regions.bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+                                   python DupLess.py -s [het_regions_bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
 
      -f/--filter_blast_only      Skip the detection of the heterozygous regions AND the pairwise alignment. If so, you must provide a blast ouput with -oufmt 6:
-                                   python DupLess.py -t [nb_threads] -a [assembly.fasta] -f [blast_output] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+                                   python DupLess.py -f [blast_output] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
 
 
 	-h/--help                   Print the usage and help and exit.
@@ -128,6 +129,7 @@ You can compare your output to the one under "exemple_output".
 ![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/figures/Super_scaffold_1.png "Graph of coverage along a sequence")
 
 ---
+
 
 ## Running DupLess on your own assembly:
 
@@ -159,14 +161,22 @@ The second peak corresponds to the coverage on the homozygous regions, and the v
 
 ### Trying different blast thresholds:
 
-You may want to try different blast thresholds, as this will modify the sensitivity of DupLess. We implemented the "-s/--skip_het_detection" parameter for this purpose, so you do not have to run the whole pipeline again. Alternatively, you can use a file with the position of the sequences where you expect duplications.
+We have implemented two options to allow the user to skip parts of the pipeline:
 
-You can use the bed file produced by a previous run of DupLess with the "-s/--skip_het_detection" option:
+ - **-s/--skip_het_detection**: to avoid the detection of the heterozygous regions. You need to give a bed file with the coordinates of the regions to blast (it can be from a previous run of DupLess: "Heterozygous_regions_ALL.bed").
+
 ```
-     python DupLess.py -s Heterozygous_regions_ALL.bed -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
+     python DupLess.py -s [het_regions_bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
+```
+
+ - **-f/--filter_blast_only"**: an option to try different blast thresholds, this will modify the sensitivity/specificity of DupLess. You need to give a blast output with "-outfmt 6" (it can be from a previous run of DupLess: "All_Blasts_scaffolds_coord.tab").
+
+```
+     python DupLess.py -f [blast_output] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
 ```
 
 ---
+
 
 ## How are the duplication detected/removed?
 
@@ -197,6 +207,7 @@ Output files are produced all along DupLess pipeline, so that the user can explo
  - The classification of the windows for each sequence are plotted, with a color code for each category (green=homozygous, red=heterozygous, purple=outlier) 
 
 ---
+
 
 ## Future work
 

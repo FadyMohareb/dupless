@@ -206,6 +206,10 @@ def concatenate_blast_results(output_folder):
 
 
 def do_blast_parallel(threads, output_folder):
+    """
+    Do the blast in parallel with a Pool.
+    The blast results are written to "output_folder/individual_blasts/"
+    """
     global HET_FASTA_NAME
 
     filter_cmds = list()
@@ -392,9 +396,10 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
             print("Exception: "+str(e))
             sys.exit()
 
-    # Index fsata of heterozygous regions, needed to extract sequences for blast
+    # Index fasta of heterozygous regions, needed to extract sequences for blast
     ud.index_fasta_file(HET_FASTA_NAME)
 
+    # Do the blast in parallel, each blast writes its results to "output_folder/individual_blasts/region_start_stop.tab"
     print("Blasting each heterozygous regions against the others, this could take a while....")
     do_blast_parallel(nbThreads, output_folder)
     print("Blast done !\n")
@@ -409,3 +414,4 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
     print("Blast files with scaffold coordinates written to: "+blast_output+"\n")
 
     return blast_output
+    
