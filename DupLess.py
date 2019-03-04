@@ -88,9 +88,9 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         pr = subprocess.Popen(cmd_mask, shell=False, stdout=subprocess.PIPE)
         pr.communicate()
         ud.check_return_code(pr.returncode, " ".join(cmd_mask))
-    except:
+    except Exception as e:
         print("Error for: " + " ".join(cmd_mask))
-        print(sys.exc_info()[0])
+        print("Exception:"+str(e))
         sys.exit()
 
     # Makes the fasta as one sequence per line, needed for sed below:
@@ -105,9 +105,9 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         pr = subprocess.Popen(cmd_sed, shell=True, stdout=subprocess.PIPE)
         pr.communicate()
         ud.check_return_code(pr.returncode, cmd_sed)
-    except:
+    except Exception as e:
         print("Error for: " + cmd_sed)
-        print(sys.exc_info()[0])
+        print("Exception:"+str(e))
         sys.exit()
     
     # Cleaning:
@@ -118,9 +118,9 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         pr = subprocess.Popen(["mv", fasta_masked_oneLine, hapname], shell=False)
         pr.communicate()
         ud.check_return_code(pr.returncode, "mv "+fasta_masked_oneLine+" "+hapname)
-    except:
+    except Exception as e:
         print("Error for: mv "+ fasta_masked_oneLine + " " + hapname)
-        print(sys.exc_info()[0])
+        print("Exception:"+str(e))
         sys.exit()
 
     ud.remove_file(fasta_masked)
@@ -241,9 +241,9 @@ for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/
         pr = subprocess.Popen(["mkdir", folder], shell=False, stdout=subprocess.PIPE)
         pr.communicate()
         ud.check_return_code(pr.returncode, "mkdir "+folder)
-    except:
+    except Exception as e:
         print("Error during mkdir "+folder)
-        print(sys.exc_info()[0])
+        print("Exception:"+str(e))
         sys.exit()
 
 # Indexing the fasta, needed later on for extraction of het regions
@@ -295,11 +295,12 @@ if file_ok:
     make_haplotype(output_folder+"/haplotypes/haplotype1.fasta", assembly_name, output_folder+"/toRemoveFromhap1.bed", output_folder)
     make_haplotype(output_folder+"/haplotypes/haplotype2.fasta", assembly_name, output_folder+"/toRemoveFromhap2.bed", output_folder)
 
-    # Cleaning the intermediate files:
-    ud.remove_file(output_folder+"/All_Blasts_region_coord.tab")
-    ud.remove_file(output_folder+"/assembly_HET_ONLY.fa")
-    ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.fai")
-    ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.dupless_sed_backup")
+    # If we skip blast, no intermediate files created, no need to clean
+    if not skip_blast:
+        # Cleaning the intermediate files:
+        ud.remove_file(output_folder+"/All_Blasts_region_coord.tab")
+        ud.remove_file(output_folder+"/assembly_HET_ONLY.fa")
+        ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.fai")
 
     print("Done !\n")
     print("Haplotype 1 generated in :" + output_folder+"/haplotypes/haplotype1.fasta")

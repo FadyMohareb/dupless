@@ -43,9 +43,9 @@ def index_fasta_file(fasta):
         pr = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
         pr.communicate()
         check_return_code(pr.returncode, " ".join(cmd))
-    except:
+    except Exception as e:
         print("Error for: " + " ".join(cmd))
-        print(sys.exc_info()[0])
+        print("Exception: "+str(e))
         sys.exit()
 
 
@@ -69,9 +69,9 @@ def check_old_bedtools_version():
             old = False
         elif(int(main)==2 and int(second)>=27):
             old = False
-    except:
+    except Exception as e:
         print("Error for: " + " ".join(cmd))
-        print(sys.exc_info()[0])
+        print("Exception:"+str(e))
         sys.exit()
     return old
 
@@ -89,9 +89,9 @@ def make_fasta_one_line(fasta_input, fasta_oneLine):
             pr = subprocess.Popen(cmd_oneLine, shell=True, stdout=fasta_oneLine_handle)
             pr.communicate()
             check_return_code(pr.returncode, cmd_oneLine)
-        except:
+        except Exception as e:
             print("Error for: " + cmd_oneLine)
-            print(sys.exc_info()[0])
+            print("Exception:"+str(e))
             sys.exit()
 
 
@@ -104,9 +104,9 @@ def remove_file(filename):
         pr = subprocess.Popen(["rm", filename], shell=False)
         pr.communicate()
         #ud.check_return_code(pr.returncode, "rm "+filename)
-    except:
+    except Exception as e:
         print("Error for: rm " + filename)
-        print(sys.exc_info()[0])
+        print("Exception: "+str(e))
 
 
 def empty_folder(folder):
@@ -119,7 +119,7 @@ def empty_folder(folder):
         # The shell=True needed here because of the "*" (regex do not work with shell=False)
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         process.communicate()
-    except:
+    except Exception as e:
         print("Error for: " + cmd)
-        print(sys.exc_info()[0])
+        print("Exception:"+str(e))
         sys.exit()

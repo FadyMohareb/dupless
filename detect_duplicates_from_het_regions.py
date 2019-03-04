@@ -176,9 +176,9 @@ def extract_heterozygous_regions(assembly, heterozygous_bed, output_folder):
         pr = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
         pr.communicate()
         ud.check_return_code(pr.returncode, " ".join(cmd))
-    except:
+    except Exception as e:
         print("Error for: " + " ".join(cmd))
-        print(sys.exc_info()[0])
+        print("Exception:"+str(e))
         sys.exit()
 
 
@@ -197,12 +197,91 @@ def concatenate_blast_results(output_folder):
             pr = subprocess.Popen(cmd, shell=False, stdout=blasts_regions)
             pr.communicate()
             ud.check_return_code(pr.returncode, " ".join(cmd))
-        except:
+        except Exception as e:
             print("Error for: " + " ".join(cmd))
-            print(sys.exc_info()[0])
+            print("Exception:"+str(e))
             sys.exit() 
 
     return region_blasts_name
+
+
+def do_blast_parallel(threads, output_folder):
+    global HET_FASTA_NAME
+
+    filter_cmds = list()
+    extract_cmds = list()       # Extract the region
+    makeBlastDB_cmds = list()   # Create a copy of the heterozygous regions fasta without the region and create a database
+    megablast_cmds = list()     # Blast the region against the database
+    n_process = 0
+
+    pl = Pool(threads)
+
+    # We do each step by batch to parallelise, all the extractions, then all the makeBlastDB, then all the megablasts
+    het_fasta = SeqIO.parse(HET_FASTA_NAME, "fasta")
+    for seq_record in het_fasta:
+        # Create the list of commands to process 1 region:
+        # 1) filter region from the fasta (to make blastdb and avoid self hits)
+        # 2) extract the region from the fasta
+        # 3) make the blast database form filtered fasta
+        # 4) command to launch megablast between region and blast database
+        extract, makeBlastDB, megablast = extract_and_blast(seq_record.name, HET_FASTA_NAME, output_folder)
+        filter_cmds.append(seq_record.name)
+        extract_cmds.append(extract)
+        makeBlastDB_cmds.append(makeBlastDB)
+        megablast_cmds.append(megablast)
+        n_process = n_process + 1
+
+        # If we get more commands than nbThreads specified, we launch them in parallel
+        if n_process >= int(threads):
+            # Bug in python: if ctrl-c during multiprocessing, the children becomes unjoinable
+            # To resolve this, have to add a keyboardInterrupt exception to both the main thread AND the subprocessess
+            try:
+                id_founds = pl.map(filter_fasta_file, filter_cmds)
+                pl.map(run_cmd, extract_cmds)
+                pl.map(run_cmd, makeBlastDB_cmds)
+                pl.map(run_cmd, megablast_cmds)
+            except KeyboardInterrupt:
+                print("Caught KeyboardInterrupt, terminating workers")
+                pl.terminate()
+                pl.join()
+                sys.exit()
+            except Exception as e:
+                print("Error during the processing of the contigs:")
+                print("Exception: "+str(e))
+                pl.terminate()
+                pl.join()
+                sys.exit()
+
+            n_process = 0
+            filter_cmds = list()
+            extract_cmds = list()
+            makeBlastDB_cmds = list()
+            megablast_cmds = list()
+
+            # We empty the temp folder as we go along, this avoid creating a temp folder with a lot of files
+            ud.empty_folder(output_folder+"/temp/")
+
+    # Do the remaining commands (the ones remaining because "n_process <= int(nbThreads)")
+    try:
+        id_founds = pl.map(filter_fasta_file, filter_cmds)
+        pl.map(run_cmd, extract_cmds)
+        pl.map(run_cmd, makeBlastDB_cmds)
+        pl.map(run_cmd, megablast_cmds)
+    except KeyboardInterrupt:
+        print("Caught KeyboardInterrupt, terminating workers")
+        pl.terminate()
+        pl.join()
+        sys.exit()
+    except Exception as e:
+        print("Error during the processing of the contigs:")
+        print("Exception: "+str(e))
+        pl.terminate()
+        pl.join()
+        sys.exit()
+    
+    ud.empty_folder(output_folder+"/temp/")
+    pl.close()
+    pl.join()
 
 
 
@@ -307,90 +386,18 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
             pr = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
             pr.communicate()
             ud.check_return_code(pr.returncode, cmd)
-        except:
+            ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.dupless_sed_backup")
+        except Exception as e:
             print("Error for: " + cmd)
-            print(sys.exc_info()[0])
+            print("Exception: "+str(e))
             sys.exit()
 
+    # Index fsata of heterozygous regions, needed to extract sequences for blast
     ud.index_fasta_file(HET_FASTA_NAME)
 
     print("Blasting each heterozygous regions against the others, this could take a while....")
-    filter_cmds = list()
-    extract_cmds = list()       # Extract the region
-    makeBlastDB_cmds = list()   # Create a copy of the heterozygous regions fasta without the region and create a database
-    megablast_cmds = list()     # Blast the region against the database
-    n_process = 0
-
-    pl = Pool(nbThreads)
-
-    # We do each step by batch to parallelise, all the extractions, then all the makeBlastDB, then all the megablasts
-    het_fasta = SeqIO.parse(HET_FASTA_NAME, "fasta")
-    for seq_record in het_fasta:
-        # Create the list of commands to process 1 region:
-        # 1) filter region from the fasta (to make blastdb and avoid self hits)
-        # 2) extract the region from the fasta
-        # 3) make the blast database form filtered fasta
-        # 4) command to launch megablast between region and blast database
-        extract, makeBlastDB, megablast = extract_and_blast(seq_record.name, HET_FASTA_NAME, output_folder)
-        filter_cmds.append(seq_record.name)
-        extract_cmds.append(extract)
-        makeBlastDB_cmds.append(makeBlastDB)
-        megablast_cmds.append(megablast)
-        n_process = n_process + 1
-
-        # If we get more commands than nbThreads specified, we launch them in parallel
-        if n_process >= int(nbThreads):
-            # Bug in python: if ctrl-c during multiprocessing, the children becomes unjoinable
-            # To resolve this, have to add a keyboardInterrupt exception to both the main thread AND the subprocessess
-            try:
-                id_founds = pl.map(filter_fasta_file, filter_cmds)
-                pl.map(run_cmd, extract_cmds)
-                pl.map(run_cmd, makeBlastDB_cmds)
-                pl.map(run_cmd, megablast_cmds)
-            except KeyboardInterrupt:
-                print("Caught KeyboardInterrupt, terminating workers")
-                pl.terminate()
-                pl.join()
-                sys.exit()
-            except:
-                print("Error during the processing of the contigs:")
-                print(sys.exc_info()[0])
-                pl.terminate()
-                pl.join()
-                sys.exit()
-
-            n_process = 0
-            filter_cmds = list()
-            extract_cmds = list()
-            makeBlastDB_cmds = list()
-            megablast_cmds = list()
-
-            # We empty the temp folder as we go along, this avoid creating a temp folder with a lot of files
-            ud.empty_folder(output_folder+"/temp/")
-
-    # Do the remaining commands (the ones remaining because "n_process <= int(nbThreads)")
-    try:
-        id_founds = pl.map(filter_fasta_file, filter_cmds)
-        pl.map(run_cmd, extract_cmds)
-        pl.map(run_cmd, makeBlastDB_cmds)
-        pl.map(run_cmd, megablast_cmds)
-    except KeyboardInterrupt:
-        print("Caught KeyboardInterrupt, terminating workers")
-        pl.terminate()
-        pl.join()
-        sys.exit()
-    except:
-        print("Error during the processing of the contigs:")
-        print(sys.exc_info()[0])
-        pl.terminate()
-        pl.join()
-        sys.exit()
-    
-    ud.empty_folder(output_folder+"/temp/")
-
+    do_blast_parallel(nbThreads, output_folder)
     print("Blast done !\n")
-    pl.close()
-    pl.join()
     
     # Concatenate the blast results and convert blast coordinates from het regions to coordinates on scaffolds
     region_blasts_name = concatenate_blast_results(output_folder)

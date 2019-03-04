@@ -282,8 +282,8 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
         pool.terminate()
         pool.join()
         sys.exit()
-    except:
-        print("Error during the processing of the contigs")
+    except Exception as e:
+        print("Error during the processing of the contigs: "+e)
         pool.terminate()
         pool.join()
         sys.exit()
@@ -299,9 +299,9 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
             pr = subprocess.Popen(cmd, shell=False, stdout=concat_bed)
             pr.communicate()
             ud.check_return_code(pr.returncode, " ".join(cmd))
-        except:
+        except Exception as e:
             print("Error for: " + " ".join(cmd))
-            print(sys.exc_info()[0])
+            print("Exception:"+str(e))
             sys.exit()  
     print("Bed files concatenated to: "+concat_bed_name+"\n")
     return concat_bed_name
