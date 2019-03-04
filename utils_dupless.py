@@ -84,6 +84,7 @@ def make_fasta_one_line(fasta_input, fasta_oneLine):
     """
     with open(fasta_oneLine, "w") as fasta_oneLine_handle:
         cmd_oneLine = "awk \'/^>/{print s? s\"\\n\"$0:$0;s=\"\";next}{s=s sprintf(\"%s\",$0)}END{if(s)print s}\' "+fasta_input
+        print("\t"+cmd_oneLine)
         try:
             pr = subprocess.Popen(cmd_oneLine, shell=True, stdout=fasta_oneLine_handle)
             pr.communicate()

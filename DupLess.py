@@ -65,6 +65,9 @@ def usage():
     print("     -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:")
     print("                                     python DupLess.py -t [nb_threads] -a [assembly.fasta] -s [het_regions.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")
     print("")
+    print("     -f/--filter_blast_only      Skip the detection of the heterozygous regions AND the pairwise alignment. If so, you must provide a blast ouput with -oufmt 6:")
+    print("                                     python DupLess.py -t [nb_threads] -a [assembly.fasta] -f [blast_output] -i [min_blast_identity] -l [min_blast_length] -o [output_folder] ")
+    print("")
     print("     -h/--help                   Print the usage and help and exit.")
     print("     -v/--version                Print the version and exit.")
 
@@ -136,13 +139,16 @@ output_folder = "./DupLess_out/"
 nbThreads = 10
 blast_identity_threshold = 90   # Two regions will be considered duplicated if...
 blast_length_threshold = 0      # ...these two blast thresholds are met (min identity and min length).
-het_bed = None                  # Created by the script. Bed defining the heterozygous region. Can be used to try more than one blast thresholds without rerunning everything
-skip_het_dect = False           # Possibility to skip the first step (het detection) which is time consuming.
+skip_het_dect = False           # Possibility to skip the first step (het detection) if bed of heterozygous regions is provided.
+het_bed = None                  # Created by the script. Bed defining the heterozygous region.
+skip_blast = False              # Possibility to skip the "het detection" and "pairwise blasting" and just filter the blast results.
+blast_output = None             # Default output file for blast results
 skip_plot = False               # Skip the generation of the coverage plots
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "t:w:b:a:c:g:o:s:i:l:nhv", ["nThreads=", "window_size=", "bed_cov=", "assembly=", "expected_cov=", "bed_gaps=", 
-                                                                        "out_folder=", "skip_het_detection=", "blast_identity=", "blast_length=", "no_plot", "help", "version"])
+    opts, args = getopt.getopt(sys.argv[1:], "t:w:b:a:c:g:o:s:f:i:l:nhv", ["nThreads=", "window_size=", "bed_cov=", "assembly=", "expected_cov=", "bed_gaps=", 
+                                                                            "out_folder=", "skip_het_detection=", "filter_blast_only=",
+                                                                            "blast_identity=", "blast_length=", "no_plot", "help", "version"])
 except getopt.GetoptError as err:
     print(str(err))
     usage()
@@ -165,6 +171,10 @@ for o,a in opts:
     elif o in ("-s", "--skip_het_dect"):
         het_bed = str(a)
         skip_het_dect = True
+    elif o in ("-f", "--filter_blast_only"):
+        blast_output = str(a)
+        skip_het_dect = True
+        skip_blast = True
     elif o in ("-i", "--blast_identity"):
         blast_identity_threshold = int(a)
     elif o in ("-l", "--blast_length"):
@@ -189,10 +199,11 @@ if not skip_het_dect:
         print("Error with option -b/--bed_cov: "+error_mssg)
         usage()
         sys.exit(2)
-    # And we stop if folder already exists (to avoid overwriting an already existing project)
-    if(os.path.isdir(output_folder)):
-        print("\nFolder '"+output_folder+"' already exists, stopping now...\n")
-        sys.exit(2)
+
+# We stop if folder already exists (to avoid overwriting an already existing project)
+if(os.path.isdir(output_folder)):
+    print("\nFolder '"+output_folder+"' already exists, stopping now...\n")
+    sys.exit(2)
 
 file_ok, error_mssg = ud.check_file(assembly_name)
 if not file_ok:
@@ -220,6 +231,7 @@ if((blast_length_threshold < 0)):
     usage()
     sys.exit(2)
 
+
 #=================================================================
 #                          Main                                  =
 #=================================================================
@@ -238,18 +250,45 @@ for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/
 # Also a good way to check if samtools exists at the start of the script
 ud.index_fasta_file(assembly_name)
 
+
+#==================================================
+#   Detection of the heterozygous regions
+#==================================================
 if not skip_het_dect:
-    # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
-    het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder, nbThreads, skip_plot)
+    #Check if the coverage_bed file exists
+    file_ok, error_mssg = ud.check_file(coverage_bed)
+    if file_ok:
+        # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
+        het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder, nbThreads, skip_plot)
+    else:
+        print("Error with the coverage bed file: "+error_mssg)
+        usage()
+        sys.exit(2)
 
-# Check if the het_bed file exists (wether it has been created by the step before or just given by the user)
-file_ok, error_mssg = ud.check_file(het_bed)
+
+#==================================================
+#   Pairwise alignment of heterozygous regions
+#==================================================
+if not skip_blast:
+    #Check if the het_bed file exists (wether it has been created by the step before or just given by the user)
+    file_ok, error_mssg = ud.check_file(het_bed)
+    if file_ok:
+        # Launch pairwise blast comparisons between the detected heterozygous regions to detect duplication
+        blast_output = dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads)
+    else:
+        print("Error with the heterozygous bed file: "+error_mssg)
+        usage()
+        sys.exit(2)
+
+
+#==================================================
+#   Filtering the blast results
+#==================================================
+#Check if the blast output file exists (wether it has been created by the step before or just given by the user)
+file_ok, error_mssg = ud.check_file(blast_output)
 if file_ok:
-    # Launch pairwise blast comparisons between the detected heterozygous regions to detect duplication
-    dd.detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads)
-
     # Filter the blasts by identity and length.
-    dd.filter_blast_results(output_folder+"/All_Blasts_scaffolds_coord.tab", blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)
+    dd.filter_blast_results(blast_output, blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)
 
     # Create the haplotype from the bed files resulting from blast filtration.
     print("Generating the haplotype fasta files from the blast results...")
@@ -261,11 +300,12 @@ if file_ok:
     ud.remove_file(output_folder+"/assembly_HET_ONLY.fa")
     ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.fai")
     ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.dupless_sed_backup")
+
+    print("Done !\n")
+    print("Haplotype 1 generated in :" + output_folder+"/haplotypes/haplotype1.fasta")
+    print("Haplotype 2 generated in :" + output_folder+"/haplotypes/haplotype2.fasta")
+
 else:
-    print("Error with the heterozygous bed: "+error_mssg)
+    print("Error with the blast output file: "+error_mssg)
     usage()
     sys.exit(2)
-
-print("Done !\n")
-print("Haplotype 1 generated in :" + output_folder+"/haplotypes/haplotype1.fasta")
-print("Haplotype 2 generated in :" + output_folder+"/haplotypes/haplotype2.fasta")

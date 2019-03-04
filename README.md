@@ -5,19 +5,13 @@
 Most of the currently available assemblers are designed to work on highly inbred, homozygous species and are treating differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly.
 For these cases, we created "DupLess", a tool capable of detecting and removing the duplicated regions issued from heterozygosity in diploid genomes.
 
-DupLess workflow is composed of two main steps:
-
- 1. The detection, based on the coverage, of heterozygous regions in the assembly.
-
- 2. The detection of duplicates among the heterozygous regions, based on their sequences similarity (using blast).
-
 ---
 
 ## Dependencies
 
 DupLess is supported on Mac and Linux.
 
-You will need to have the following dependancies:
+You will need to have the following dependencies:
 
 **Note:** The following python packages are already built-in from python2.7 and do not need to be installed: getopt, subprocess, multiprocessing, sys and os. Moreover, **awk** and **sed** should also be available on most systems.
 
@@ -31,7 +25,7 @@ You will need to have the following dependancies:
 
 ## Installation
 
-DupLess is a collection of python scripts, no installation is needed. You just have to clone the repository (or directly download the python files) and run "python DupLess.py" to use it.
+DupLess itself is a collection of python scripts, no installation is needed. You just have to clone the repository (or directly download the python files) and run "python DupLess.py" to use it.
 ```
      git clone https://github.com/MCorentin/DupLess
      cd DupLess
@@ -47,7 +41,7 @@ To install samtools 1.9 (version 1.9 is not yet available from "apt-get install"
 ```
 To install samtools you may also have to install HTSlib (cf: https://www.biostars.org/p/328831/)
 
-DupLess needs to have the tools in the PATH to work.
+DupLess needs to have the dependencies (samtools ,bedtools, blastn, awk and sed) available or in the $PATH to work.
 You can run the following command to add a tool to the PATH variable.
 ```
 	export PATH=/path/to/tool_folder/:$PATH
@@ -61,7 +55,7 @@ The "test_data" folder contains to files:
 
 To test if your DupLess installation works you can run the following command:
 ```
-     /usr/bin/python2.7 /home/corentin/git_scripts/hetdect/DupLess.py -t 5 -o test_dupless -b illumina.coverage -a genome.fasta -w 500 -c 80 -i 80 -l 100
+     python /path/to/DupLess/DupLess.py -t 5 -o test_dupless -b illumina.coverage -a genome.fasta -w 500 -c 80 -i 80 -l 100
 ```
 
 You can compare your output to the one under "exemple_output".
@@ -111,7 +105,11 @@ You can compare your output to the one under "exemple_output".
 	-n/--no_plot		        Skip the creation of all plots.
 
 	-s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:
-                                     python DupLess.py -s [het_regions.bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+                                   python DupLess.py -s [het_regions.bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+
+     -f/--filter_blast_only      Skip the detection of the heterozygous regions AND the pairwise alignment. If so, you must provide a blast ouput with -oufmt 6:
+                                   python DupLess.py -t [nb_threads] -a [assembly.fasta] -f [blast_output] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+
 
 	-h/--help                   Print the usage and help and exit.
      -v/--version                Print the version and exit.
@@ -154,19 +152,49 @@ You can use R:
 cov <- read.table("illumina.coverage")
 hist(cov$V3)
 ```
-If your genome is heterozygous you should obtain two peaks (see graph below):
+If your genome is heterozygous, you should obtain two peaks (see graph below):
 ![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/figures/Histogram_coverage_R.png "Histogram of coverage")
 
-The second peak corresponds to the homozygous regions, and the value on the x-axis for the maximum of this peak corresponds to the homozyous coverage.
+The second peak corresponds to the coverage on the homozygous regions, and the value on the x-axis for the maximum of this peak corresponds to the homozygous coverage. DupLess also generates a histogram of the coverage.
 
 ### Trying different blast thresholds:
 
-You may want to try different blast thresholds as this will modify the sensitivity of DupLess. We implemented the "-s/--skip_het_detection" parameter for this purpose, so you do not have to run the whole pipeline again. Or if you already have a file with the position of the sequences where you expect duplications.
+You may want to try different blast thresholds, as this will modify the sensitivity of DupLess. We implemented the "-s/--skip_het_detection" parameter for this purpose, so you do not have to run the whole pipeline again. Alternatively, you can use a file with the position of the sequences where you expect duplications.
 
 You can use the bed file produced by a previous run of DupLess with the "-s/--skip_het_detection" option:
 ```
      python DupLess.py -s Heterozygous_regions_ALL.bed -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
 ```
+
+---
+
+## How are the duplication detected/removed?
+
+DupLess workflow is composed of two main steps:
+
+ 1. The detection, based on the coverage, of heterozygous regions in the assembly.
+
+ 2. The detection of duplicates among the heterozygous regions, based on their sequences similarity (using megablast).
+
+For the first step, DupLess processes each sequence by splitting it into windows of size defined by the "-w/--window_size" option. Then the median coverage of each window is calculated based on the coverage at each base. The window is classified in three categories depending on its median value (EC = Expected Coverage):
+
+     - Heterozygous if:  "0 < median <=  EC / 1.5"
+     - Homozygous if:    "EC < median < EC * 1.5"
+     - Outlier if:       "median = 0 **OR** median >= EC * 1.5"
+
+Only the heterozygous regions are considered for later analysis and consecutives heterozygous windows are merged together.
+
+The second step of the analysis is the pairwise megablast alignment of the heterozygous regions. Each region is aligned against all the others, only the best hit is retained for each region. After all the hits have been found, they are filtered by identity (-i/--blast_identity) and length (-l/--blast_length). The aligned pairs that are left after the filtering are the regions to remove from the assembly. DupLess does not remove the whole region, only the part that aligned.
+
+For each aligned pair DupLess removes one from *haplotype1.fasta* and the other from *haplotype2.fasta*, so no genomic data is lost. The one removed for *haplotype1.fasta* is always the one on the smaller sequence (contig/scaffold) of the pair, this is done to reduce the possible misassemblies introduced by DupLess, indeed aligned pairs are mostly one large sequence that align to a much smaller and almost only heterozygous sequence, see figure below. Hence, *haplotype1.fasta* is expected to be of better quality than *haplotype2.fasta*.
+
+![alt text](small_contig.png "Small contig, will be removed from haplotype1.fasta")
+
+Output files are produced all along DupLess pipeline, so that the user can explore in more details how the duplications have been removed:
+ 
+ - The heterozygous regions coordinates are written to a bed file.
+ - The blast results are written to a tsv file.
+ - The classification of the windows for each sequence are plotted, with a color code for each category (green=homozygous, red=heterozygous, purple=outlier) 
 
 ---
 

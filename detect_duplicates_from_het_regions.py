@@ -158,7 +158,7 @@ def convert_region_coord_to_scaffold_coord(region_blasts_name, output_folder):
                     blasts_scaffolds.write(q_scaffold_name+"\t"+s_scaffold_name+"\t"+tabs[2]+"\t"+tabs[3]+"\t"+tabs[4]+"\t"+tabs[5]+"\t"+str(q_scaffold_start)+"\t"+str(q_scaffold_end)+"\t"+str(s_scaffold_start)+"\t"+str(s_scaffold_end)+"\t"+tabs[10]+"\t"+tabs[11])
                 else:
                     blasts_scaffolds.write(q_scaffold_name+"\t"+s_scaffold_name+"\t"+tabs[2]+"\t"+tabs[3]+"\t"+tabs[4]+"\t"+tabs[5]+"\t"+str(q_scaffold_start)+"\t"+str(q_scaffold_end)+"\t"+str(s_scaffold_end)+"\t"+str(s_scaffold_start)+"\t"+tabs[10]+"\t"+tabs[11])
-    print("Blast files with scaffold coordinates written to: "+scaffold_coord_blasts_name+"\n")
+    return scaffold_coord_blasts_name
 
 
 
@@ -398,4 +398,7 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
 
     # We need to output the scaffold coordinates for the next step
     # The positions from the blast outputs are relative to the het regions
-    convert_region_coord_to_scaffold_coord(region_blasts_name, output_folder)
+    blast_output = convert_region_coord_to_scaffold_coord(region_blasts_name, output_folder)
+    print("Blast files with scaffold coordinates written to: "+blast_output+"\n")
+
+    return blast_output

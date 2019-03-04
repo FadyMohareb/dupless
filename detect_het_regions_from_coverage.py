@@ -16,7 +16,7 @@ import utils_dupless as ud
 #==============================
 #       Functions
 #==============================
-def get_color(classifications):
+def get_colors(classifications):
     """
     Takes a list of classifications ("het", "hom", anythingElse) and
     Returns:
@@ -66,7 +66,7 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
     colors = []
 
     if(len_pos == len_medians and len_class == len_pos):
-        colors = get_color(classifications)
+        colors = get_colors(classifications)
 
         plt.figure(figsize=(20,16), dpi=80)
         plt.plot(starts, medians, color='k', linewidth=0.5)
