@@ -50,6 +50,7 @@ You can run the following command to add a tool to the PATH variable:
 ## Testing the installation:
 
 The "test_data" folder contains two files:
+
  - **AT_duplicated.fa**: this is a subset of chr3 of *Arabidopsis thaliana* with artificially induced duplications (15 sequences, see below for explanations)
  - **AT_duplicated_simReads.sorted.coverage.gz**: the coverage file for these 3 contigs, based on simulated reads **you will need to unzip this file to run DupLess**.
 
@@ -63,6 +64,7 @@ To test if your DupLess installation works you can run the following command (~3
 The 15 duplicated sequences should be removed or heavily truncated, you can filter the fasta by length to remove remaining artifacts.
 
 The test dataset was created with the following pipeline (to simulate duplication due to heterozygosity):
+
  1. Extraction of chr3 of *Arabidopsis thaliana* assembly (ftp://ftp.ensemblgenomes.org/pub/plants/release-42/fasta/arabidopsis_thaliana/dna/).
  2. Creation of contig assembly by splitting chr3 everytime 2 or more consecutive "N" appeared.
  3. Creation of mutated version of contig assembly with BBmap's "mutate.sh" (mutation rate: 3%).
