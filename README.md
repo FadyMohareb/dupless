@@ -7,7 +7,6 @@ For these cases, we created "DupLess", a tool capable of detecting and removing 
 
 ---
 
-
 ## Dependencies
 
 DupLess is supported on Mac and Linux.
@@ -33,7 +32,7 @@ DupLess itself is a collection of python scripts, no installation is needed. You
      python DupLess.py --help
 ```
 
-To install samtools 1.9 (version 1.9 is not yet available from "apt-get install"):
+To install samtools 1.9:
 ```
 	wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2
 	tar -vxjf samtools-1.9.tar.bz2
@@ -42,24 +41,38 @@ To install samtools 1.9 (version 1.9 is not yet available from "apt-get install"
 ```
 To install samtools you may also have to install HTSlib (cf: https://www.biostars.org/p/328831/)
 
-DupLess needs to have the dependencies (samtools ,bedtools, blastn, awk and sed) available or in the $PATH to work.
-You can run the following command to add a tool to the PATH variable.
+DupLess needs to have the dependencies (samtools ,bedtools, blastn, awk and sed) available in the $PATH to work.
+You can run the following command to add a tool to the PATH variable:
 ```
 	export PATH=/path/to/tool_folder/:$PATH
 ```
 
 ## Testing the installation:
 
-The "test_data" folder contains to files:
- - genome.fasta: a subset of S. chilense, containing only 3 contigs.
- - illumina.coverage: the coverage file for these 3 contigs.
+The "test_data" folder contains two files:
+ - **AT_duplicated.fa**: this is a subset of chr3 of *Arabidopsis thaliana* with artificially induced duplications (15 sequences, see below for explanations)
+ - **AT_duplicated_simReads.sorted.coverage.gz**: the coverage file for these 3 contigs, based on simulated reads **you will need to unzip this file to run DupLess**.
 
-To test if your DupLess installation works you can run the following command:
+To test if your DupLess installation works you can run the following command (~30 min):
 ```
-     python /path/to/DupLess/DupLess.py -t 5 -o test_dupless -b illumina.coverage -a genome.fasta -w 500 -c 80 -i 80 -l 100
+     cd test_data/
+     gunzip AT_duplicated_simReads.sorted.coverage.gz
+     python DupLess.py -t 20 -o dupless_AT -b AT_duplicated_simReads.sorted.coverage -a AT_duplicated.fa -w 250 -c 50 -i 90 -l 100
 ```
 
-You can compare your output to the one under "exemple_output".
+The 15 duplicated sequences should be removed or heavily truncated, you can filter the fasta by length to remove remaining artifacts.
+
+The test dataset was created with the following pipeline (to simulate duplication due to heterozygosity):
+ 1. Extraction of chr3 of *Arabidopsis thaliana* assembly (ftp://ftp.ensemblgenomes.org/pub/plants/release-42/fasta/arabidopsis_thaliana/dna/).
+ 2. Creation of contig assembly by splitting chr3 everytime 2 or more consecutive "N" appeared.
+ 3. Creation of mutated version of contig assembly with BBmap's "mutate.sh" (mutation rate: 3%).
+ 4. Extraction of 15 regions from the mutated genome (~33 kbp in total) and concatenation of these 15 sequences with the contig assembly (to induce duplication).
+ 5. Simulation of reads with 25x coverage on the whole assembly.
+ 6. Simulation of reads with 25x coverage only on non-duplicated regions.
+
+After this pipeline **AT_duplicated.fa** contained 15 duplicated regions, with 25x coverage. The non-duplicated regions should have ~50x coverage. DupLess was run on this dataset and managed to remove 96% of the induced duplicated sequences.
+
+The list of duplicated contigs is available in: "test_data/additional_data/mutated_list.txt".
 
 ---
 
@@ -70,7 +83,7 @@ You can compare your output to the one under "exemple_output".
 
 - The assembly in fasta format.
 
-- A bed file with the coverage value for each base of the assembly. (See below for instructions on how to create this file).
+- A bed file with the coverage value for each base of the assembly. (See below for instructions on how to create this file: "Running DupLess on your own assembly:").
 
 **Optional**
 
@@ -188,9 +201,9 @@ DupLess workflow is composed of two main steps:
 
 For the first step, DupLess processes each sequence by splitting it into windows of size defined by the "-w/--window_size" option. Then the median coverage of each window is calculated based on the coverage at each base. The window is classified in three categories depending on its median value (EC = Expected Coverage):
 
-     - Heterozygous if:  "0 < median <=  EC / 1.5"
-     - Homozygous if:    "EC < median < EC * 1.5"
-     - Outlier if:       "median = 0 **OR** median >= EC * 1.5"
+ - Heterozygous if:  "0 < median <=  EC / 1.5"
+ - Homozygous if:    "EC < median < EC * 1.5"
+ - Outlier if:       "median = 0 **OR** median >= EC * 1.5"
 
 Only the heterozygous regions are considered for later analysis and consecutives heterozygous windows are merged together.
 
@@ -208,17 +221,24 @@ Output files are produced all along DupLess pipeline, so that the user can explo
 
 ---
 
+## Troubleshooting:
 
-## Future work
+**Q:** haplotype1.fasta is the same as the assembly despite the "toRemoveFromhap1.tsv" being not empty.
+
+**A:** Check if your assembly does not contain Windows new line characters: "\r". You can use "cat -v file", the hidden characters will appear as "^M". To resolve this issue you can run "tr -d '\r' < assembly.fasta > assembly_corrected.fasta"
+
+
+## Future work:
 
 - Support long reads to realign to duplicated regions and detect misassemblies
 - Possibly: add Mummer to check how the regions around the duplications align to each other.
 - Add an option to remove whole contigs if the blast hit span > threshold% of the total length.
 - Improve speed.
 - Flag regions with half the coverage but no blast hits.
+- Correct for coverage bias on beginning and end of contigs.
 
 
-## Performances
+## Performances:
 
 For a genome of 1Gbp, DupLess requires ~50 Gb of RAM.
 
