@@ -321,10 +321,14 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
     process = subprocess.Popen(["touch", toRemovehap2_name], stdout=subprocess.PIPE)
     process.wait()
 
+    discarded_name = output_folder+"/discarded.bed"
+    process = subprocess.Popen(["touch", discarded_name], stdout=subprocess.PIPE)
+    process.wait()
+
     to_keep = list()
     with open(blast_filename, "r") as all_blasts:
         # For each duplicated pair, we write one to hap1 and the other to hap2
-        with open(toRemovehap1_name, "a") as hap1, open(toRemovehap2_name, "a") as hap2:
+        with open(toRemovehap1_name, "a") as hap1, open(toRemovehap2_name, "a") as hap2, open(discarded_name, "a") as discar_handle:
             for blast in all_blasts:
                 tabs = blast.split("\t")
                 # tabs[2] contains the blast identity
@@ -357,9 +361,13 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
                         if(q_length < s_length):
                             hap1.write(query_name+"\t"+str(query_start)+"\t"+str(query_end)+"\n")
                             hap2.write(subject_name+"\t"+str(subject_start)+"\t"+str(subject_end)+"\n")
+                            
+                            discar_handle.write(query_name+":"+str(query_start)+"-"+str(query_end)+"\n")
                         else:
                             hap1.write(subject_name+"\t"+str(subject_start)+"\t"+str(subject_end)+"\n")
                             hap2.write(query_name+"\t"+str(query_start)+"\t"+str(query_end)+"\n")
+
+                            discar_handle.write(subject_name+":"+str(subject_start)+"-"+str(subject_end)+"\n")
 
                         to_keep.append(reversed_pair)
     print("Done !\n")

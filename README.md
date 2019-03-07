@@ -99,6 +99,7 @@ The list of duplicated contigs is available in: "test_data/additional_data/mutat
 python DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [window_size] -c [expected_coverage] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
 
 **Required:**
+
      -a/--assembly               The assembly corresponding to the bed coverage in fasta format.
 
      -b/--bed_cov                The bed file containing the coverage at each base (can be generated with 'bedtools genomecov').
@@ -106,6 +107,7 @@ python DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [wind
                                      to avoid false positives due to coverage drop at the ends of contigs (because of unaligned mates).
 
 **Optional:**
+     
      -t/--nThreads               The number of threads (default 10) 
      -o/--out_folder             The output folder (default './DupLess_out/')
 
@@ -113,7 +115,7 @@ python DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [wind
                                  You can determine the value to use by plotting the coverage distribution. It should correspond to the homozygous peak
                                  If no value is given, it will be based on the mode of the coverage distribution (not reliable if high heterozygosity).
 
-     -w/--window_size            The size of the window in basepairs (default: 1000)
+     -w/--window_size            The size of the windows in basepairs (default: 1000)
                                  The value of the coverage for each window will be the median of the coverage at each base.
                                  All the windows classified as 'heterozygous' will be considered for the detection of duplication.
 
@@ -125,6 +127,7 @@ python DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [wind
      -n/--no_plot                Skip the creation of all the plots
 
 **Skipping part of pipeline:**
+     
      -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed identifying the heterozygous regions:
                                       python DupLess.py -s [het_regions_bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
 
@@ -132,13 +135,14 @@ python DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [wind
                                       python DupLess.py -f [blast_output] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
 
 **Other:**
+     
      -h/--help                   Print the usage and help and exit.
      -v/--version                Print the version and exit.
 
 
 ## Output files
 
-- Two fasta files containing the different versions of the deduplicated assembly. (under "output_folder/haplotypes/")
+- Two fasta files containing the different versions of the deduplicated assembly. (under "output_folder/deduplicated/")
 - A bed file with the identified heterozygous regions, useful if one wants to explore the regions in more details ("output_folder/Heterozygous_regions_ALL.bed").
 - A histogram of the coverage distribution, to help the user decide the expected coverage value (see below).
 - Graphs of the coverage along each sequences of the assembly (see below).
@@ -165,7 +169,7 @@ You need to generate a file with the coverage value at each position (format: "s
      bedtools genomecov -ibam genome_reads.sorted.bam -d > genome_reads.coverage
 ```
 
-You can then use "genome_reads.coverage" with the "-b/--bed_cov" parameter. 
+You can then use "genome_reads.coverage" with the "-b/--bed_cov" parameter. We recommand using short reads with a high coverage. For paired end reads we recommand a short insert size (cf: *How to choose the right value for the window length ("-w/--window_size" option):* below).
 
 ### How to choose the right value for the expected coverage ("-c/--expected_cov" option):
 
@@ -242,8 +246,11 @@ Output files are produced all along DupLess pipeline, so that the user can explo
 
 **Q:** haplotype1.fasta is the same as the assembly despite the "toRemoveFromhap1.tsv" being not empty.
 
-**A:** Check if your assembly does not contain Windows new line characters: "\r". You can use "cat -v file", the hidden characters will appear as "^M". To resolve this issue you can run "tr -d '\r' < assembly.fasta > assembly_corrected.fasta"
+**A:** Check if your assembly does not contain Windows new line characters: "\r". You can use "cat -v file", the hidden characters will appear as "^M". To resolve this issue you can run:
 
+```
+     tr -d '\r' < assembly.fasta > assembly_newLineCorrected.fasta
+```
 
 ## Future work:
 

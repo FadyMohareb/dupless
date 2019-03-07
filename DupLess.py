@@ -35,9 +35,6 @@ VERSION = "1.0.0"
 
 
 def print_version():
-    """
-    Prints the version.
-    """
     global VERSION
     print("DupLess v"+VERSION)
 
@@ -61,7 +58,7 @@ def usage():
     print("                                 You can determine the value to use by plotting the coverage distribution. It should correspond to the homozygous peak")
     print("                                 If no value is given, it will be based on the mode of the coverage distribution (not reliable if high heterozygosity).")
     print("")
-    print("     -w/--window_size            The size of the window in basepairs (default: 1000)")
+    print("     -w/--window_size            The size of the windows in basepairs (default: 1000)")
     print("                                 The value of the coverage for each window will be the median of the coverage at each base.")
     print("                                 All the windows classified as 'heterozygous' will be considered for the detection of duplication.")
     print("")
@@ -82,14 +79,15 @@ def usage():
     print("     -v/--version                Print the version and exit.")
 
 
-def make_haplotype(hapname, assembly_name, bedname, output_folder):
+def clean_assembly(outname, assembly_name, bedname, output_folder):
     """
-    From an assembly fasta and a bed of regions to remove, creates an haplotype fasta.
+    From an assembly fasta and a bed of regions to remove, create a fasta with duplications removed.
+    Also create a fasta of "discarded" sequences.
     Use "bedtools maskfasta" and "sed" to remove the regions.
     Also need "awk" to have each sequence on one line.
     """
-    fasta_masked = output_folder+"/haplotypes/temp_masked.fasta"
-    fasta_masked_oneLine = output_folder+"/haplotypes/temp_masked_oneLine.fasta"
+    fasta_masked = output_folder+"/deduplicated/temp_masked.fasta"
+    fasta_masked_oneLine = output_folder+"/deduplicated/temp_masked_oneLine.fasta"
 
     # Mask the duplicate regions with a "$"
     cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", fasta_masked, "-bed", bedname, "-mc", "$"]
@@ -121,21 +119,39 @@ def make_haplotype(hapname, assembly_name, bedname, output_folder):
         sys.exit()
     
     # Cleaning:
-    # move the fasta_masked_oneLine to the haplotype(1/2).fasta
+    # move the fasta_masked_oneLine to the deduplicated.fasta
     # remove the temp file fasta_masked
     # remove the backup made by sed
     try:
-        pr = subprocess.Popen(["mv", fasta_masked_oneLine, hapname], shell=False)
+        pr = subprocess.Popen(["mv", fasta_masked_oneLine, outname], shell=False)
         pr.communicate()
-        ud.check_return_code(pr.returncode, "mv "+fasta_masked_oneLine+" "+hapname)
+        ud.check_return_code(pr.returncode, "mv "+fasta_masked_oneLine+" "+outname)
     except Exception as e:
-        print("Error for: mv "+ fasta_masked_oneLine + " " + hapname)
+        print("Error for: mv "+ fasta_masked_oneLine + " " + outname)
         print("Exception:"+str(e))
         sys.exit()
 
     ud.remove_file(fasta_masked)
     ud.remove_file(fasta_masked_oneLine+".dupless_sed_backup")
 
+
+def generate_discarded_fasta(assembly_name, bedname, discarded_fasta):
+    """
+    Writes the sequences that have been removed during the "clean_assembly" to a discarded.fasta file.
+    The bed file should correspond to "discared.bed" and contains the same sequences as toRemoveFromHap1.bed
+    """
+    with open(discarded_fasta, "w") as discarded_handle:
+        # Extract the duplicated regions
+        cmd_faidx = ["samtools", "faidx", assembly_name, "-r", bedname]
+        print("\t"+ " ".join(cmd_faidx))
+        try:
+            pr = subprocess.Popen(cmd_faidx, shell=False, stdout=discarded_handle)
+            pr.communicate()
+            ud.check_return_code(pr.returncode, " ".join(cmd_faidx))
+        except Exception as e:
+            print("Error for: " + " ".join(cmd_faidx))
+            print("Exception:"+str(e))
+            sys.exit()
 
 #=================================================================
 #                           GetOpt                               =
@@ -246,7 +262,7 @@ if((blast_length_threshold < 0)):
 #                          Main                                  =
 #=================================================================
 # Creating the output folder architecture
-for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/haplotypes"]:
+for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/deduplicated"]:
     try:
         pr = subprocess.Popen(["mkdir", folder], shell=False, stdout=subprocess.PIPE)
         pr.communicate()
@@ -299,24 +315,31 @@ file_ok, error_mssg = ud.check_file(blast_output)
 if file_ok:
     # Filter the blasts by identity and length.
     dd.filter_blast_results(blast_output, blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)
-
-    # Create the haplotype from the bed files resulting from blast filtration.
-    print("Generating the haplotype fasta files from the blast results...")
-    make_haplotype(output_folder+"/haplotypes/haplotype1.fasta", assembly_name, output_folder+"/toRemoveFromhap1.bed", output_folder)
-    make_haplotype(output_folder+"/haplotypes/haplotype2.fasta", assembly_name, output_folder+"/toRemoveFromhap2.bed", output_folder)
-
-    # If we skip blast, no intermediate files created, no need to clean
-    if not skip_blast:
-        # Cleaning the intermediate files:
-        ud.remove_file(output_folder+"/All_Blasts_region_coord.tab")
-        ud.remove_file(output_folder+"/assembly_HET_ONLY.fa")
-        ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.fai")
-
-    print("Done !\n")
-    print("Haplotype 1 generated in :" + output_folder+"/haplotypes/haplotype1.fasta")
-    print("Haplotype 2 generated in :" + output_folder+"/haplotypes/haplotype2.fasta")
-
 else:
     print("Error with the blast output file: "+error_mssg)
     usage()
     sys.exit(2)
+
+
+#==================================================
+#   Generating the output files
+#==================================================
+deduplicated_assembly = output_folder+"/deduplicated/deduplicated_assembly.fasta"
+discarded_assembly = output_folder+"/deduplicated/discarded.fasta"
+
+print("Generating the deduplicated fasta files from the blast results...")
+clean_assembly(deduplicated_assembly, assembly_name, output_folder+"/toRemoveFromhap1.bed", output_folder)
+generate_discarded_fasta(assembly_name, output_folder+"/discarded.bed", discarded_assembly)
+
+# If we skip blast, no intermediate files created, no need to clean
+if not skip_blast:
+    # Cleaning the intermediate files:
+    ud.remove_file(output_folder+"/All_Blasts_region_coord.tab")
+    ud.remove_file(output_folder+"/assembly_HET_ONLY.fa")
+    ud.remove_file(output_folder+"/assembly_HET_ONLY.fa.fai")
+
+print("Done !\n")
+print("Deduplicated assembly generated in: " + deduplicated_assembly)
+print("Discarded sequences in: " + discarded_assembly)
+
+
