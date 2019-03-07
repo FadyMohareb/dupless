@@ -1,6 +1,6 @@
 # DupLess v1.0.0 (Duplication Less):
 
-## Deduplication for assemblies of heterozygous genomes based on read coverage and blast pairwise alignments.
+## A duplication removal tool for heterozygous genomes based on read coverage and pairwise alignments.
 
 Most of the currently available assemblers are designed to work on highly inbred, homozygous species and are treating differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly.
 For these cases, we created "DupLess", a tool capable of detecting and removing the duplicated regions issued from heterozygosity in diploid genomes.
@@ -58,7 +58,7 @@ To test if your DupLess installation works you can run the following command (~3
 ```
      cd test_data/
      gunzip AT_duplicated_simReads.sorted.coverage.gz
-     python DupLess.py -t 20 -o dupless_AT -b AT_duplicated_simReads.sorted.coverage -a AT_duplicated.fa -w 250 -c 50 -i 90 -l 100
+     python DupLess.py -t 20 -o dupless_AT -b AT_duplicated_simReads.sorted.coverage -a AT_duplicated.fa -w 250 -c 50 -i 95 -l 500
 ```
 
 The 15 duplicated sequences should be removed or heavily truncated, you can filter the fasta by length to remove remaining artifacts.
@@ -72,7 +72,7 @@ The test dataset was created with the following pipeline (to simulate duplicatio
  5. Simulation of reads with 25x coverage on the whole assembly.
  6. Simulation of reads with 25x coverage only on non-duplicated regions.
 
-After this pipeline **AT_duplicated.fa** contained 15 duplicated regions, with 25x coverage. The non-duplicated regions should have ~50x coverage. DupLess was run on this dataset and managed to remove 96% of the induced duplicated sequences.
+After this pipeline **AT_duplicated.fa** contained 15 duplicated regions, with 25x coverage. The non-duplicated regions had ~50x coverage. DupLess was run on this dataset and managed to remove 95% of the induced duplicated sequences.
 
 The list of duplicated contigs is available in: "test_data/additional_data/mutated_list.txt".
 
@@ -93,51 +93,58 @@ The list of duplicated contigs is available in: "test_data/additional_data/mutat
 
 - If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication. (This file is also produced during DupLess first step)
 
----
-
 
 ## Usage
 
-	python DupLess.py -t [nb_threads] -w [window_size] -b [coverage.bed] -a [assembly.fasta] -c [expected_coverage] -g [gaps.bed] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
+python DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [window_size] -c [expected_coverage] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]
 
-**Options:**
+**Required:**
+     -a/--assembly               The assembly corresponding to the bed coverage in fasta format.
 
-     -t/--nThreads               The number of threads to use (default 10)
-     -o/--out_folder             The output folder (default is './DupLess_out/').
+     -b/--bed_cov                The bed file containing the coverage at each base (can be generated with 'bedtools genomecov').
+                                 /!\ If using paired end reads: make sure that you set the -w or -l option higher than the insert size,
+                                     to avoid false positives due to coverage drop at the ends of contigs (because of unaligned mates).
 
-     -b/--bed_cov                REQUIRED: The bed file containing the coverage for each position (can be generated with bedtools genomecov).
-     -a/--assembly               REQUIRED: The assembly corresponding to the bed coverage in fasta format.
-     -g/--bed_gaps               A bed file contaning the gaps along the genome. If given, the graphs will contain a grey background where the gaps are.
-     
-     -w/--window_size            The size of the window. The value of the read coverage will be the median of the values inside each window (default: 1000).
-     -c/--expected_cov           The expected read coverage along the genome. The homozygosity / heterozygosity will be determined based on this value. You can assess this value by plot the coverage distribution.
+**Optional:**
+     -t/--nThreads               The number of threads (default 10) 
+     -o/--out_folder             The output folder (default './DupLess_out/')
+
+     -c/--expected_cov           The expected read coverage for the homozygous regions. The homozygosity / heterozygosity will be determined based on this value.
+                                 You can determine the value to use by plotting the coverage distribution. It should correspond to the homozygous peak
                                  If no value is given, it will be based on the mode of the coverage distribution (not reliable if high heterozygosity).
-     -i/--blast_identity         The minimum percentage of identity between the het region and the blast hit to consider it valid (default: 90, range 0 to 100).
-     -l/--blast_length           The minimum length for the blast hit to be considered as valid (default=0).
 
+     -w/--window_size            The size of the window in basepairs (default: 1000)
+                                 The value of the coverage for each window will be the median of the coverage at each base.
+                                 All the windows classified as 'heterozygous' will be considered for the detection of duplication.
+
+     -g/--bed_gaps               A bed file containing the gaps along the genome. If given, the graphs will contain a grey background where the gaps are.
+
+     -i/--blast_identity         The minimum percentage of identity between the het regions to consider them duplicates (default: 90, range 0 to 100).
+     -l/--blast_length           The blast alignments with a length lower than this threshold will be filtered (default=0).
+
+     -n/--no_plot                Skip the creation of all the plots
+
+**Skipping part of pipeline:**
+     -s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed identifying the heterozygous regions:
+                                      python DupLess.py -s [het_regions_bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
+
+     -f/--filter_blast_only      Skip the detection of the heterozygous regions AND the pairwise alignments. If so, you must provide a blast ouput with -oufmt 6:
+                                      python DupLess.py -f [blast_output] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
 
 **Other:**
-
-	-n/--no_plot		        Skip the creation of all plots.
-
-	-s/--skip_het_detection     Skip the detection of the heterozygous regions. If so, you must provide a bed with the heterozygous regions positions:
-                                   python DupLess.py -s [het_regions_bed] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
-
-     -f/--filter_blast_only      Skip the detection of the heterozygous regions AND the pairwise alignment. If so, you must provide a blast ouput with -oufmt 6:
-                                   python DupLess.py -f [blast_output] -t [nb_threads] -a [assembly.fasta] -i [min_blast_identity] -l [min_blast_length] -o [new_output_folder]
-
-
-	-h/--help                   Print the usage and help and exit.
+     -h/--help                   Print the usage and help and exit.
      -v/--version                Print the version and exit.
 
 
-## Output
+## Output files
 
-- **Two fasta files containing the different versions of the deduplicated assembly.** (under "output_folder/haplotypes/")
+- Two fasta files containing the different versions of the deduplicated assembly. (under "output_folder/haplotypes/")
 - A bed file with the identified heterozygous regions, useful if one wants to explore the regions in more details ("output_folder/Heterozygous_regions_ALL.bed").
 - A histogram of the coverage distribution, to help the user decide the expected coverage value (see below).
 - Graphs of the coverage along each sequences of the assembly (see below).
 - The results of the blast between the heterozygous regions ("output_folder/All_Blasts_scaffolds_coord.tab").
+
+**We recommand filtering the resulting deduplicated assembly by length as DupLess does not remove entire contigs, so some very small contigs may be present in the output**
 
 ![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/figures/Histogram_coverage.png "Histogram of coverage")
 
@@ -173,6 +180,14 @@ If your genome is heterozygous, you should obtain two peaks (see graph below):
 ![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/figures/Histogram_coverage_R.png "Histogram of coverage")
 
 The second peak corresponds to the coverage on the homozygous regions, and the value on the x-axis for the maximum of this peak corresponds to the homozygous coverage. DupLess also generates a histogram of the coverage.
+
+### How to choose the right value for the window length ("-w/--window_size" option):
+
+DupLess works with a window-based approach: each sequence is splitted into windows of a certain size. Each window will be catergorized as "homozygous", "heterozygous" or "outlier" depending on the coverage median for this window.
+
+Larger window sizes will decrease the running time but may decrease the sensitivity of DupLess. Smaller window sizes will increase the sensitivity but also possibly the number false positives, this may be counterbalanced by choosing a higher value for the blast length threshold (-l/--blast_length). The optimal value depends on the fragmentation of your assembly and your objectives: removing as many duplications as possible (small window size) or reducing the number of false positives (large window size).
+
+/!\ **When using paired end reads** (when creating the coverage bed file), a drop in coverage is expected at the extreme ends of the sequences. This is due to the fact that only one read of the pair align to these regions. We recommand setting -w or -l higher than the insert size when using paired end reads to avoid false positives.
 
 ### Trying different blast thresholds:
 
@@ -237,7 +252,6 @@ Output files are produced all along DupLess pipeline, so that the user can explo
 - Add an option to remove whole contigs if the blast hit span > threshold% of the total length.
 - Improve speed.
 - Flag regions with half the coverage but no blast hits.
-- Correct for coverage bias on beginning and end of contigs.
 
 
 ## Performances:
