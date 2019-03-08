@@ -293,8 +293,10 @@ def do_blast_parallel(threads, output_folder):
 def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_threshold, assembly, output_folder):
     """
     Filter the blast results on identity and length.
-    Write the valid blast hits to "toRemove1.bed" and "toRemove2.bed"
-    These files will contain the regions to remove from the assembly on each haplotype.
+    Write the valid blast hits to "duplications_to_remove.bed" and "discarded.regions"
+    These files will contain the regions to remove from the assembly:
+        - "duplications_to_remove.bed": in bed format
+        - "discarded.regions": in samtools regions format (to use it later with "samtools faidx -r discarded.regions")
     """
 
     file_ok, error_mssg =  ud.check_file(blast_filename)
@@ -314,11 +316,8 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
     assembly_dict = SeqIO.index(assembly, "fasta")
 
     print("\nFiltering blast results...")
-    toRemovehap1_name = output_folder+"/toRemoveFromhap1.bed"
-    process = subprocess.Popen(["touch", toRemovehap1_name], stdout=subprocess.PIPE)
-    process.wait()
-    toRemovehap2_name = output_folder+"/toRemoveFromhap2.bed"
-    process = subprocess.Popen(["touch", toRemovehap2_name], stdout=subprocess.PIPE)
+    toRemove_name = output_folder+"/duplications_to_remove.bed"
+    process = subprocess.Popen(["touch", toRemove_name], stdout=subprocess.PIPE)
     process.wait()
 
     discarded_name = output_folder+"/discarded.bed"
@@ -327,8 +326,8 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
 
     to_keep = list()
     with open(blast_filename, "r") as all_blasts:
-        # For each duplicated pair, we write one to hap1 and the other to hap2
-        with open(toRemovehap1_name, "a") as hap1, open(toRemovehap2_name, "a") as hap2, open(discarded_name, "a") as discar_handle:
+        # For each duplicated pair, we write the coordinates to the ".bed" and ".regions" files
+        with open(toRemove_name, "a") as toRemoveHandle, open(discarded_name, "a") as discar_handle:
             for blast in all_blasts:
                 tabs = blast.split("\t")
                 # tabs[2] contains the blast identity
@@ -356,22 +355,19 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
                     reversed_pair = region2+";"+region1
 
                     if(pair not in to_keep):
-                        # Instead of randomly removing heterozygous regions, we remove regions from the smallest contig in hap1 and from the longest in hap2.
-                        # This will reduce the chance of cutting a gene in half and hence downgrading hap1 assembly quality. Hap1's N50 will also be less affected.
+                        # Instead of randomly removing heterozygous regions, we remove regions from the smallest contig, this avoid introducing too many misassemblies,
+                        # indeed, sometimes the duplication is a small contig that maps to part of a big one: it is better to remove a small contig that removing the middle of a large one.
+                        # This will reduce the chance of cutting a gene in half and hence downgrading the resulting assembly quality.
                         if(q_length < s_length):
-                            hap1.write(query_name+"\t"+str(query_start)+"\t"+str(query_end)+"\n")
-                            hap2.write(subject_name+"\t"+str(subject_start)+"\t"+str(subject_end)+"\n")
-                            
+                            toRemoveHandle.write(query_name+"\t"+str(query_start)+"\t"+str(query_end)+"\n")    
                             discar_handle.write(query_name+":"+str(query_start)+"-"+str(query_end)+"\n")
                         else:
-                            hap1.write(subject_name+"\t"+str(subject_start)+"\t"+str(subject_end)+"\n")
-                            hap2.write(query_name+"\t"+str(query_start)+"\t"+str(query_end)+"\n")
-
+                            toRemoveHandle.write(subject_name+"\t"+str(subject_start)+"\t"+str(subject_end)+"\n")
                             discar_handle.write(subject_name+":"+str(subject_start)+"-"+str(subject_end)+"\n")
-
+                                
                         to_keep.append(reversed_pair)
-    print("Done !\n")
 
+    return(toRemove_name, discarded_name)
 
 
 def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):

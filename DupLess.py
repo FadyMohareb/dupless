@@ -1,22 +1,12 @@
 #!/usr/bin/python
 
-# TO DO :
-#       Do a better expected coverage calculation : detect two peaks and select one that is freq*2 from the other (can be an issue if more than two peaks)
-#       If long reads: align them to duplicated regions to check for misassemblies
-#       Correct coverage for edge effect on the end of the contigs (if paired ends) ?
-#       Have logs (running and error log from communicate()[1]), with command used to launch DupLess
-#       Add threshold to remove whole contig if duplicated regions covers > threshold% of total length
-#       Add checks for samtools, bedtools, blastn, awk and sed...
-#       Add checks for het bed file format
-#       Add different output formats
-
-
 # Dependencies:
-# bedtools v2.27 (lower version should now work)
-# samtools v1.9 or higher (important for the "-o" parameter)
-# blastn v2.6.0+
-# pandas, numpy, matplotlib, multiprocessing, getopt, biopython, sys, os, subprocess
-# sed and awk
+#   python v2.7 or higher
+#   samtools v1.9 or higher (important for the "-o" parameter)
+#   bedtools v2.27 (lower version should now work)
+#   blastn v2.6.0+
+#   pandas, numpy, matplotlib, multiprocessing, getopt, biopython, sys, os, subprocess
+#   sed and awk
 
 # For matplotlib.pyplot: needs python-tk: sudo apt-get install python-tk
 
@@ -79,7 +69,7 @@ def usage():
     print("     -v/--version                Print the version and exit.")
 
 
-def clean_assembly(outname, assembly_name, bedname, output_folder):
+def remove_duplications_assembly(outname, assembly_name, bedname, output_folder):
     """
     From an assembly fasta and a bed of regions to remove, create a fasta with duplications removed.
     Also create a fasta of "discarded" sequences.
@@ -137,7 +127,7 @@ def clean_assembly(outname, assembly_name, bedname, output_folder):
 
 def generate_discarded_fasta(assembly_name, bedname, discarded_fasta):
     """
-    Writes the sequences that have been removed during the "clean_assembly" to a discarded.fasta file.
+    Writes the sequences that have been removed during the "remove_duplications_assembly" to a discarded.fasta file.
     The bed file should correspond to "discared.bed" and contains the same sequences as toRemoveFromHap1.bed
     """
     with open(discarded_fasta, "w") as discarded_handle:
@@ -272,8 +262,9 @@ for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/
         print("Exception:"+str(e))
         sys.exit()
 
+
 # Indexing the fasta, needed later on for extraction of het regions
-# Also a good way to check if samtools exists at the start of the script
+# Also a good way to check if samtools exists, at the start of the script
 ud.index_fasta_file(assembly_name)
 
 
@@ -314,7 +305,7 @@ if not skip_blast:
 file_ok, error_mssg = ud.check_file(blast_output)
 if file_ok:
     # Filter the blasts by identity and length.
-    dd.filter_blast_results(blast_output, blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)
+    toRemoveBed, discardedBed = dd.filter_blast_results(blast_output, blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)
 else:
     print("Error with the blast output file: "+error_mssg)
     usage()
@@ -328,8 +319,8 @@ deduplicated_assembly = output_folder+"/deduplicated/deduplicated_assembly.fasta
 discarded_assembly = output_folder+"/deduplicated/discarded.fasta"
 
 print("Generating the deduplicated fasta files from the blast results...")
-clean_assembly(deduplicated_assembly, assembly_name, output_folder+"/toRemoveFromhap1.bed", output_folder)
-generate_discarded_fasta(assembly_name, output_folder+"/discarded.bed", discarded_assembly)
+remove_duplications_assembly(deduplicated_assembly, assembly_name, toRemoveBed, output_folder)
+generate_discarded_fasta(assembly_name, discardedBed, discarded_assembly)
 
 # If we skip blast, no intermediate files created, no need to clean
 if not skip_blast:
