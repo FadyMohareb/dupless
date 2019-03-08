@@ -2,14 +2,17 @@
 
 import pandas as pd
 import numpy as np
-import matplotlib
-# non-interactive backend to avoid error : "XIO:  fatal IO error 25 (Inappropriate ioctl for device)"
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-plt.rcParams.update({'font.size': 18})
 import sys
 import subprocess
 from multiprocessing import Pool
+
+import matplotlib
+# matplotlib with non-interactive backend to avoid error: 
+# "XIO:  fatal IO error 25 (Inappropriate ioctl for device)"
+matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 18})
 
 import utils_dupless as ud
 
@@ -17,10 +20,10 @@ import utils_dupless as ud
 #       Functions
 #==============================
 def get_colors(classifications):
-    """
-    Takes a list of classifications ("het", "hom", anythingElse) and
+    """Take a list of classifications ("het", "hom", anythingElse) 
+    and returns corresponding list of colors for the coverage graphs.
     Returns:
-        The correspond list of colors ("red", "green", "purple").
+        A list of colors ("red", "green", "purple").
     """
     colors = []
     for cl in classifications:
@@ -35,8 +38,10 @@ def get_colors(classifications):
 
 
 def classify_median(value, expected_coverage):
-    """
-    Takes a value and an expected coverage and
+    """Take a coverage median for a window (value) and an expected coverage and return a classification:
+         Heterozygous if:  "0 < value <=  EC / 1.5"
+         Homozygous if:    "EC / 1.5 < value < EC * 1.5"
+         Outlier if:       "value = 0 or value >= EC * 1.5"
     Returns:
         A classification ("het", "hom", "outlier") according to the distance to the expected_coverage.
     """
@@ -54,9 +59,8 @@ def classify_median(value, expected_coverage):
 
 
 def create_plot_coverage(starts, medians, classifications, contig_coverage, contig_name, gaps_dataframe, window_size, output_folder):
-    """
-    Generates the coverage plot from a list of start positions and a list of coverages (generally corresponding to a contig/scaffold).
-    Saves it under output_folder/"filename".
+    """Generate the coverage plot from a list of start positions and a list of coverages (generally corresponding to a contig/scaffold).
+    Saves it under output_folder/contig_name+".png".
     """
     filename = contig_name+".png"
 
@@ -79,13 +83,15 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
         plt.title(str(contig_name))
         plt.ylim(0,contig_coverage*2)
 
-        #Create custom artists
+        #Create custom artists for legend the colors here should correspond to the one in "get_colors"
+        # todo: create variables hom_col, het_col etc... for consistency
         hetArtist = plt.Line2D((0,1),(0,0), color='#d62728', marker='o')
         homArtist = plt.Line2D((0,1),(0,0), color='#5ac739', marker='o')
-        outArtist = plt.Line2D((0,1),(0,0), color = '#440a7f', marker='o')
+        outArtist = plt.Line2D((0,1),(0,0), color='#440a7f', marker='o')
         #Create legend from custom artist/label lists
         plt.legend([hetArtist,homArtist, outArtist],['Heterozygous', 'Homozygous', 'Outlier'])
 
+        # If the user gave a gaps.bed file as input, then we display the gaps as grey bars.
         if(gaps_dataframe.empty == False):
             gaps_df_contig = gaps_dataframe[gaps_dataframe['contig'].isin([contig_name])]
             if(len(gaps_df_contig['contig']) > 0):
@@ -103,12 +109,11 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
 
 
 def get_windows_medians_contig(contig_df, expected_cov, window_size):
+    """Generate the classification (het, hom, outlier), the list of coverage medians, the starts and stops of each window in the contig.
+    Returns:
+        Four lists, two for the positions, one for the medians and one for the classifications. ('hom'=homozygous, 'het'=heterozygous, 'outlier'=possible outlier)
     """
-    Generate the list of positions of the list of coverages for the contig "contig_name".
-    Returns::
-        A list of positions and a list of medians classifications. ('hom'=homozygous, 'het'=heterozygous, 'outlier'=possible outlier)
-    """
-    # Getting the last position of the contig and the median coverage on this contig (to detect het regions, we assume that homozygous is the dominant)
+    # Getting the last position of the contig, used to get the last window
     last_contig_position = contig_df['position'].iloc[-1] - 1
 
     previous_position = 0
@@ -139,18 +144,20 @@ def get_windows_medians_contig(contig_df, expected_cov, window_size):
 
 
 def create_bed_het_regions(contig_name, starts, stops, classifications, output_folder):
-    """
-    Creates a bed file containing the regions detected as 'het' in the "classifications" list.
-    The regions comes from the "positions" list. The two lists should correspond (positions[i] should refer to classifications[i])
+    """Create a bed file containing the regions detected as 'het' in the "classifications" list.
+    The regions comes from the "positions" list. The two lists should correspond (positions[i] should refer to classifications[i]).
+    Consecutive heterozygous windows are concatenated into one region.
     """
     i = 0
     start = 0
-
+    
+    # Create a bed file for each sequence in "individual_beds/", they are merged later.
     with open(output_folder+"/individual_beds/"+contig_name+'HET.bed', 'a') as het_bed_file:
         if(len(starts) == len(classifications)):
             while(i < len(classifications)):
                 if(classifications[i] == 'het'):
                     start = starts[i]
+                    # This is used to merge consecutive het. windows into one region 
                     while(i < len(classifications)-1 and classifications[i+1] == 'het'):
                         i = i + 1
                     stop = stops[i]
@@ -164,11 +171,10 @@ def create_bed_het_regions(contig_name, starts, stops, classifications, output_f
                 error_file.write("Different lengths for starts and classifications:"+str(len(starts))+" and "+str(len(classifications)))
 
 
-# genome_expected_coverage is coming from the user "-c" or fom computation of the genome mode
+# genome_expected_coverage is coming from the user "-c" or from computation of the genome mode
 # Computation of the genome mode does not work if Heterozygous peak > Homozygous peak
 def coverage_histogram(contig_coverages, genome_expected_coverage, output_folder):
-    """
-    Takes a list of coveragesself.
+    """Take a list of coverages and plot the histogram of coverage. Can help the user deciding the value of -c.
     Saves the histogram of coverage under output_folder/"Histogram_coverage.png".
     """
     plt.figure(figsize=(20,16), dpi=80)
@@ -182,15 +188,13 @@ def coverage_histogram(contig_coverages, genome_expected_coverage, output_folder
     plt.close()
 
 
-
 def detect_genome_mode(bed_dataframe):
-    """
-    Detects the genome mode from the coverage values. Will be false if het peak > hom peak.
+    """Detect the genome mode from the coverage values. Will be false if het peak > hom peak.
     Returns:
-        The detected genome mode.
+        The detected genome mode (the value with the highest frequency).
     """
     genome_mode = None
-    # Remove values = 0 => if the scaffold possess mostly of gaps it can false the calculation of the mode
+    # Remove values = 0 => if the assembly has a lot of gaps it can false the calculation of the mode
     bed_dataframe_filtered = bed_dataframe[bed_dataframe['coverage'] != 0]
     modes = bed_dataframe_filtered['coverage'].mode()
     if(len(modes) == 1):
@@ -204,6 +208,7 @@ def detect_genome_mode(bed_dataframe):
 
 # Try and catch needed here due to bug in python with multiprocessing
 # ctrl-c makes the child unjoinable and pool creates new workers instead of exiting
+# global variables used because of multiprocessing (better way?).
 def process_contig(contig_name):
     global BED_DF
     global GENOME_MODE
@@ -212,7 +217,7 @@ def process_contig(contig_name):
     global GAPS_DF
     global SKIP_PLOT
 
-    # try here because this funcion is used with pool
+    # try here because this funcion is used with pool:
     # the except KeyboardInterrupt will allow a gracefull exit with ctrl-c
     try:
         contig_df = BED_DF[BED_DF['contig'].isin([contig_name])]
@@ -233,10 +238,9 @@ GAPS_DF = pd.DataFrame()
 # "Main" function that uses the other ones
 #==========================================
 def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_folder, nbThreads, skip_plot):
-    """
-    Reads the coverage bed file and produces bed and graphs of the heterozygous regions.
+    """Read the coverage bed file and produces bed and graphs of the heterozygous regions.
     Returns:
-        The name of the bed files containing all the heterozygous regions.
+        The name of the bed file containing all the heterozygous regions.
     """
     global BED_DF
     global GENOME_MODE
@@ -250,7 +254,6 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     OUTPUT_FOLDER = output_folder
     SKIP_PLOT = skip_plot
 
-    #GAPS_DF = pd.DataFrame()
     if(gaps_bed != None):
         GAPS_DF = pd.read_csv(gaps_bed, sep='\t', index_col=False, names=['contig', 'start', 'stop'], header=None)
 
@@ -258,8 +261,7 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
     BED_DF = pd.read_csv(coverage_bed, sep='\t', index_col=False, names=['contig', 'position', 'coverage'], header=None)
     print("Done !\n")
 
-    # If user mode not set by user, then compute it
-    # Use the mode from the whole genome to avoid wrong calculation on mostly het scaffolds.
+    # If expected coverage not set by user, then compute it as the mode of the assembly coverage.
     if(GENOME_MODE == None):
         GENOME_MODE = detect_genome_mode(BED_DF)
 
@@ -268,7 +270,7 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
         bed_DF_hist = BED_DF[(BED_DF['coverage'] <= GENOME_MODE*2) & (BED_DF['coverage'] != 0)]
         coverage_histogram(bed_DF_hist['coverage'], GENOME_MODE, OUTPUT_FOLDER)
 
-    print("The mode is :"+str(GENOME_MODE))
+    print("The expected coverage is: "+str(GENOME_MODE))
 
     print("Processing the contigs... (Creating graphs and bed files)")
     # Multiprocessing, we process each contig in parallel
@@ -287,9 +289,10 @@ def detect_het_regions(coverage_bed, gaps_bed, genome_mode, window_size, output_
         pool.terminate()
         pool.join()
         sys.exit()
-        
     print("Contigs processed !\n")
 
+    # There is a bed file per sequence, so we know concatenate all of them into one bed file
+    # And return it to the main script.
     concat_bed_name = OUTPUT_FOLDER+"/Heterozygous_regions_ALL.bed"
     print("Concatenating the bed files to "+concat_bed_name+" ...")
     with open(concat_bed_name, "w") as concat_bed:

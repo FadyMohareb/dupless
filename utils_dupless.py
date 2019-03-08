@@ -6,6 +6,9 @@ import subprocess
 
 
 def check_return_code(code, cmd):
+    """Check the return code for a command
+    If the code is not 0 (success), then sys.exit with the code.
+    """
     if(code != 0):
         print("\nAn error occured during the following command:")
         print(cmd)
@@ -14,8 +17,7 @@ def check_return_code(code, cmd):
 
 
 def check_file(filename):
-    """
-    Checks if "filename" exists and is a file.
+    """Check if "filename" exists and is a file.
     Returns:
         True if file exists and is a file.
         False if filename==None or is not a file.
@@ -33,8 +35,7 @@ def check_file(filename):
 
 
 def index_fasta_file(fasta):
-    """
-    Index a fasta file with samtools faidx.
+    """Index a fasta file with samtools faidx.
     Used for extraction of heterozygous regions.
     """
     cmd = ["samtools", "faidx", fasta]
@@ -50,8 +51,7 @@ def index_fasta_file(fasta):
 
 
 def check_old_bedtools_version():
-    """
-    bedtools before v2.27 adds extra data to fasta sequence names when using getfasta
+    """bedtools before v2.27 adds extra data to fasta sequence names when using getfasta
     This function checks if the current version of bedtools is 2.27 or higher.
     Returns:
         False if bedtools  >= 2.27
@@ -77,8 +77,7 @@ def check_old_bedtools_version():
 
 
 def make_fasta_one_line(fasta_input, fasta_oneLine):
-    """
-    Transform to single line fasta to avoid empty lines after sed step
+    """Transform fasta to single line fasta to avoid empty lines after sed step.
     Indeed if a region is longer than the fasta wrapping (usually 80 caracters), then the fasta will contain empty lines.
     awk from: https://stackoverflow.com/questions/15857088/remove-line-breaks-in-a-fasta-file, to avoid error with biopython: "fasta-2line"
     """
@@ -96,9 +95,8 @@ def make_fasta_one_line(fasta_input, fasta_oneLine):
 
 
 def remove_file(filename):
-    """
-    Try to remove a file.
-    Do not exit if fails.
+    """Try to remove a file.
+    Just print error if it fails.
     """
     try:
         pr = subprocess.Popen(["rm", filename], shell=False)
@@ -110,8 +108,7 @@ def remove_file(filename):
 
 
 def empty_folder(folder):
-    """
-    Removes all the files in a folder.
+    """Removes all the files in a folder.
     Used to empty the temp file during the blast step.
     """
     cmd = "rm "+folder+"/*"

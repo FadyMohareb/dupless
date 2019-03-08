@@ -142,11 +142,18 @@ python DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [wind
 
 ## Output files
 
-- Two fasta files containing the different versions of the deduplicated assembly. (under "output_folder/deduplicated/")
-- A bed file with the identified heterozygous regions, useful if one wants to explore the regions in more details ("output_folder/Heterozygous_regions_ALL.bed").
+The outputf folder will contains the following subfolders:
+
+- individuals_beds/  contains the bed files describing the het. regions for each sequence.
+- invidual_blasts/   contains the blast results for each het. region.
+- graphs/            contains the coverage graphs for each sequence.
+- temp/              contains temp file for blast.
+- **deduplicated/**      contains the results of DupLess: **deduplicated.fasta** and **discarded.fasta**
+
+The output folder will also contain the following files:
+- A bed file with the identified heterozygous regions, useful if one wants to explore the regions in more details ("Heterozygous_regions_ALL.bed").
 - A histogram of the coverage distribution, to help the user decide the expected coverage value (see below).
-- Graphs of the coverage along each sequences of the assembly (see below).
-- The results of the blast between the heterozygous regions ("output_folder/All_Blasts_scaffolds_coord.tab").
+- The raw results of the blast between the heterozygous regions ("All_Blasts_scaffolds_coord.tab").
 
 **We recommand filtering the resulting deduplicated assembly by length as DupLess does not remove entire contigs, so some very small contigs may be present in the output**
 
@@ -223,7 +230,7 @@ DupLess workflow is composed of two main steps:
 For the first step, DupLess processes each sequence by splitting it into windows of size defined by the "-w/--window_size" option. Then the median coverage of each window is calculated based on the coverage at each base. The window is classified in three categories depending on its median value (EC = Expected Coverage):
 
  - Heterozygous if:  "0 < median <=  EC / 1.5"
- - Homozygous if:    "EC < median < EC * 1.5"
+ - Homozygous if:    "EC / 1.5 < median < EC * 1.5"
  - Outlier if:       "median = 0 **OR** median >= EC * 1.5"
 
 Only the heterozygous regions are considered for later analysis and consecutives heterozygous windows are merged together.

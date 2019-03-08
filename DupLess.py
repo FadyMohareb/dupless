@@ -8,8 +8,6 @@
 #   pandas, numpy, matplotlib, multiprocessing, getopt, biopython, sys, os, subprocess
 #   sed and awk
 
-# For matplotlib.pyplot: needs python-tk: sudo apt-get install python-tk
-
 import getopt
 import subprocess
 import sys
@@ -23,15 +21,15 @@ import utils_dupless as ud
 global VERSION
 VERSION = "1.0.0"
 
-
 def print_version():
+    """Print the version.
+    """
     global VERSION
     print("DupLess v"+VERSION)
 
 
 def usage():
-    """
-    Prints the usage.
+    """Print the usage.
     """
     print("\npython DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [window_size] -c [expected_coverage] -i [min_blast_identity] -l [min_blast_length] -o [output_folder]")
     print("\nRequired:")
@@ -70,16 +68,15 @@ def usage():
 
 
 def remove_duplications_assembly(outname, assembly_name, bedname, output_folder):
+    """From an assembly and a bed of regions to remove, create a fasta with duplications removed.
+    The regions in the bed are masked as "$" with "bedtools maskfasta", then sed is used to replace "$" by "".
+    Also use "awk" to have each sequence on one line (to avoid creating empty lines with sed).
     """
-    From an assembly fasta and a bed of regions to remove, create a fasta with duplications removed.
-    Also create a fasta of "discarded" sequences.
-    Use "bedtools maskfasta" and "sed" to remove the regions.
-    Also need "awk" to have each sequence on one line.
-    """
+    # Temp files used by sed and awk, removed at the end of the function
     fasta_masked = output_folder+"/deduplicated/temp_masked.fasta"
     fasta_masked_oneLine = output_folder+"/deduplicated/temp_masked_oneLine.fasta"
 
-    # Mask the duplicate regions with a "$"
+    # Mask the duplicate regions with "$"
     cmd_mask = ["bedtools", "maskfasta", "-fi", assembly_name, "-fo", fasta_masked, "-bed", bedname, "-mc", "$"]
     print("\t"+ " ".join(cmd_mask))
     try:
@@ -91,8 +88,8 @@ def remove_duplications_assembly(outname, assembly_name, bedname, output_folder)
         print("Exception:"+str(e))
         sys.exit()
 
-    # Makes the fasta as one sequence per line, needed for sed below:
-    # else we have "empty/truncated" lines were we remove sequences
+    # Make the fasta as one sequence per line, needed for sed below:
+    # else we have "empty/truncated" lines where we remove sequences longer than fasta line length.
     ud.make_fasta_one_line(fasta_masked, fasta_masked_oneLine)
 
     # Replace the "$" which marks the duplicate regions by an empty string (to remove them)
@@ -108,31 +105,30 @@ def remove_duplications_assembly(outname, assembly_name, bedname, output_folder)
         print("Exception:"+str(e))
         sys.exit()
     
-    # Cleaning:
+    # Cleaning temp files:
     # move the fasta_masked_oneLine to the deduplicated.fasta
-    # remove the temp file fasta_masked
-    # remove the backup made by sed
+    mv_cmd = ["mv", fasta_masked_oneLine, outname]
     try:
-        pr = subprocess.Popen(["mv", fasta_masked_oneLine, outname], shell=False)
+        pr = subprocess.Popen(mv_cmd, shell=False)
         pr.communicate()
-        ud.check_return_code(pr.returncode, "mv "+fasta_masked_oneLine+" "+outname)
+        ud.check_return_code(pr.returncode, " ".join(mv_cmd))
     except Exception as e:
-        print("Error for: mv "+ fasta_masked_oneLine + " " + outname)
+        print("Error for: "+ " ".join(mv_cmd))
         print("Exception:"+str(e))
         sys.exit()
-
+    # remove the temp file fasta_masked
     ud.remove_file(fasta_masked)
+    # remove the backup made by sed
     ud.remove_file(fasta_masked_oneLine+".dupless_sed_backup")
 
 
-def generate_discarded_fasta(assembly_name, bedname, discarded_fasta):
-    """
-    Writes the sequences that have been removed during the "remove_duplications_assembly" to a discarded.fasta file.
-    The bed file should correspond to "discared.bed" and contains the same sequences as toRemoveFromHap1.bed
+def generate_discarded_fasta(assembly_name, region_file, discarded_fasta):
+    """Write the sequences that have been removed to a discarded.fasta file.
+    The bed file should correspond to "discarded.region"
     """
     with open(discarded_fasta, "w") as discarded_handle:
         # Extract the duplicated regions
-        cmd_faidx = ["samtools", "faidx", assembly_name, "-r", bedname]
+        cmd_faidx = ["samtools", "faidx", assembly_name, "-r", region_file]
         print("\t"+ " ".join(cmd_faidx))
         try:
             pr = subprocess.Popen(cmd_faidx, shell=False, stdout=discarded_handle)
@@ -146,19 +142,19 @@ def generate_discarded_fasta(assembly_name, bedname, discarded_fasta):
 #=================================================================
 #                           GetOpt                               =
 #=================================================================
-window_size =  1000         # The coverage of each window will be based on the median of the coverages inside the window.
-coverage_bed = None         # Bed file with the coverage value for each position. Can be produced with "bedtools coverage".
-assembly_name = None        # Assembly in fasta format, used to extract the het regions and also check the scaffold lengths.
-expected_coverage = None    # Any window with coverage < expected_cov/1.5 will be considered as heterozygous.
-gaps_bed = None             # Optional. Draw gaps as grey bars on the graphs.
+window_size =  1000             # The coverage of each window will be based on the median of all the coverages inside the window.
+coverage_bed = None             # Bed file with the coverage value for each position. Can be produced with "bedtools coverage".
+assembly_name = None            # Assembly in fasta format, used to extract the het regions and also check the scaffold lengths.
+expected_coverage = None        # Any window with 0 < coverage < expected_cov/1.5 will be considered as heterozygous.
+gaps_bed = None                 # Optional. Used to draw gaps as grey bars on the coverage graphs.
 output_folder = "./DupLess_out/"
 nbThreads = 10
 blast_identity_threshold = 90   # Two regions will be considered duplicated if...
 blast_length_threshold = 0      # ...these two blast thresholds are met (min identity and min length).
 skip_het_dect = False           # Possibility to skip the first step (het detection) if bed of heterozygous regions is provided.
-het_bed = None                  # Created by the script. Bed defining the heterozygous region.
+het_bed = None                  # Bed defining the heterozygous region (Created by DupLess, or given by the user if skip_het_dect = T).
 skip_blast = False              # Possibility to skip the "het detection" and "pairwise blasting" and just filter the blast results.
-blast_output = None             # Default output file for blast results
+blast_output = None             # Default output file for blast results (given by the user if skip_blast = T)
 skip_plot = False               # Skip the generation of the coverage plots
 
 try:
@@ -169,6 +165,7 @@ except getopt.GetoptError as err:
     print(str(err))
     usage()
     sys.exit(2)
+
 for o,a in opts:
     if o in ("-t", "--nThreads"):
         nbThreads = int(a)
@@ -216,7 +213,7 @@ if not skip_het_dect:
         usage()
         sys.exit(2)
 
-# We stop if folder already exists (to avoid overwriting an already existing project)
+# Exit if output folder already exists (to avoid overwriting an already existing project)
 if(os.path.isdir(output_folder)):
     print("\nFolder '"+output_folder+"' already exists, stopping now...\n")
     sys.exit(2)
@@ -228,12 +225,12 @@ if not file_ok:
     sys.exit(2)
 
 if(window_size <= 0):
-    print("The window size can not be lower than 0.\n")
+    print("The window size can not be lower than 0 (-w/--window_size option).\n")
     usage()
     sys.exit(2)
 
 if(nbThreads <= 0):
-    print("The number of threads can not be lower than 0.\n")
+    print("The number of threads can not be lower than 0 (-t/--nThreads option).\n")
     usage()
     sys.exit(2)
 
@@ -252,6 +249,11 @@ if((blast_length_threshold < 0)):
 #                          Main                                  =
 #=================================================================
 # Creating the output folder architecture
+# individuals_beds/  contains the bed files describing the het. regions for each sequence.
+# invidual_blasts/   contains the blast results for each het. region.
+# graphs/            contains the coverage graphs for each sequence.
+# temp/              contains temp file for blast.
+# deduplicated/      contains the results of DupLess: deduplicated.fasta and discarded.fasta
 for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/deduplicated"]:
     try:
         pr = subprocess.Popen(["mkdir", folder], shell=False, stdout=subprocess.PIPE)
@@ -263,16 +265,16 @@ for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/
         sys.exit()
 
 
-# Indexing the fasta, needed later on for extraction of het regions
-# Also a good way to check if samtools exists, at the start of the script
+# Indexing the assembly, needed later on for extraction of het regions
+# Also a good way to check if samtools exists at the start of the script
 ud.index_fasta_file(assembly_name)
-
 
 #==================================================
 #   Detection of the heterozygous regions
 #==================================================
 if not skip_het_dect:
-    #Check if the coverage_bed file exists
+    # If the user does not skip the het dect then we need the coverage bed file
+    # We check if it exists
     file_ok, error_mssg = ud.check_file(coverage_bed)
     if file_ok:
         # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
@@ -287,7 +289,7 @@ if not skip_het_dect:
 #   Pairwise alignment of heterozygous regions
 #==================================================
 if not skip_blast:
-    #Check if the het_bed file exists (wether it has been created by the step before or just given by the user)
+    # Check if the het_bed file exists (wether it has been created by the step before or just given by the user)
     file_ok, error_mssg = ud.check_file(het_bed)
     if file_ok:
         # Launch pairwise blast comparisons between the detected heterozygous regions to detect duplication
@@ -301,10 +303,10 @@ if not skip_blast:
 #==================================================
 #   Filtering the blast results
 #==================================================
-#Check if the blast output file exists (wether it has been created by the step before or just given by the user)
+# Check if the blast output file exists (wether it has been created by the step before or just given by the user)
 file_ok, error_mssg = ud.check_file(blast_output)
 if file_ok:
-    # Filter the blasts by identity and length.
+    # Filter the blasts by identity and length
     toRemoveBed, discardedBed = dd.filter_blast_results(blast_output, blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)
 else:
     print("Error with the blast output file: "+error_mssg)
@@ -332,5 +334,3 @@ if not skip_blast:
 print("Done !\n")
 print("Deduplicated assembly generated in: " + deduplicated_assembly)
 print("Discarded sequences in: " + discarded_assembly)
-
-

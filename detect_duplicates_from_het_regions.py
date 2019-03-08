@@ -10,8 +10,7 @@ import utils_dupless as ud
 
 
 def get_lengths_fasta(fasta):
-    """
-    Takes a fasta file name.
+    """Take a fasta file name.
     Returns:
         A list containing the length(s) of the sequence(s)
     """
@@ -27,9 +26,8 @@ def get_lengths_fasta(fasta):
 # Need to use global name for multiprocessing
 # We can use map only with a function and a list of values (here the reigon ID)
 def filter_fasta_file(ID):
-    """
-    Remove the sequence corresponding to ID from HET_FASTA_NAME and writes the result to "filtered_fasta".
-    Needed to make a blast database (avoid self hits)
+    """Remove the sequence corresponding to ID from HET_FASTA_NAME and writes the result to "filtered_fasta".
+    Needed to make a blast database (to avoid self hits)
     """
     global HET_FASTA_NAME
     global OUTPUT_FOLDER
@@ -63,8 +61,7 @@ def filter_fasta_file(ID):
 
 
 def extract_and_blast(region, het_fasta, output_folder):
-    """
-    Creates commands for blasting a region (format "name:start-stop") against all the other het regions (needs a fasta file with all the het regions "het fasta").
+    """Create commands for blasting a region (format "name:start-stop") against all the other het regions (needs a fasta file with all the het regions: "het_fasta").
     This will be use with multiprocessing
     Returns the commands (strings) to:
         Extract the het region from the het fasta.
@@ -87,8 +84,7 @@ def extract_and_blast(region, het_fasta, output_folder):
 
 
 def run_cmd(cmd):
-    """
-    Used by the multiprocessing.Pool to run commands in parallel
+    """Used by the multiprocessing.Pool to run commands in parallel
     """
     # Here the try and expect are used to resolve a bug in python, when using multiprocessing and trying to ctrl-c:
     # Subprocesses do not return anything and the pool just creates the next worker, so the ctrl-c does not stop everything
@@ -100,8 +96,7 @@ def run_cmd(cmd):
 
 
 def get_assembly_coordinates_from_blast_results(region_name, blast_start, blast_stop):
-    """
-    Translate the blast coordinates (which are relative to the het. regions) to scaffold coordinates.
+    """Translate the blast coordinates (which are relative to the het. regions) to scaffold coordinates.
     The blast hits are relative to the het region coordinates: "region_name start stop" (region_name is in the format: "scaffold_start_stop").
     We do this because we want to remove sequences according to the scaffolds coordinates.
     Used by: "convert_region_coord_to_scaffold_coord"
@@ -109,9 +104,9 @@ def get_assembly_coordinates_from_blast_results(region_name, blast_start, blast_
         The scaffold name in the assembly ("scaffold_start_stop" becomes "scaffold").
         The start position of the blast hit in the assembly "start het region + start blast hit"
         The stop position of the blast hit in the assembly "start het region + blast hit length"
-        Basically, we just "shift" the blast coordinates by "region start" to get the scaffold coordinates.
+        Basically, we just "shift" the blast coordinates by "region start" to get the scaffold coordinates !
     """
-    # We split the region by underscores (name is under the format: "scaffold_start_stop")
+    # We split the region by underscores (name is under the format: "scaffold_regionStart_regionStop")
     name_split = region_name.split("_")
     # If the original scaffold name contained underscores, we put them back with join 
     # The last 2 elements of the split are the start and end positions of the region
@@ -128,8 +123,7 @@ def get_assembly_coordinates_from_blast_results(region_name, blast_start, blast_
 
 
 def convert_region_coord_to_scaffold_coord(region_blasts_name, output_folder):
-    """
-    Blast hits coordinates are relatives to the heterozygous regions
+    """Blast hits coordinates are relatives to the heterozygous regions
     But we need the scaffolds coordinates to remove from reference fasta
     This function converts the region coordinates to scaffold coordinates
     """
@@ -163,9 +157,8 @@ def convert_region_coord_to_scaffold_coord(region_blasts_name, output_folder):
 
 
 def extract_heterozygous_regions(assembly, heterozygous_bed, output_folder):
-    """
-    Creates a fasta file containing all the heterozygous regions from the "heterozygous_bed" file
-    The bed file comes from the previous step of DupLess (or given by the user)
+    """Create a fasta file containing all the heterozygous regions from the "heterozygous_bed" file
+    The bed file comes from the previous step of DupLess (or given by the user). Used for pairwise blast.
     Returns:
         The name of the fasta file with the heterozygous regions
     """
@@ -183,8 +176,7 @@ def extract_heterozygous_regions(assembly, heterozygous_bed, output_folder):
 
 
 def concatenate_blast_results(output_folder):
-    """
-    Concatenate all the individual blasts into one file
+    """Concatenate all the individual blasts into one file
     Return:
         The name of the file with concatenated blast results
     """
@@ -192,6 +184,7 @@ def concatenate_blast_results(output_folder):
   
     print("Concatenating the blast results to "+region_blasts_name+" ...")
     with open(region_blasts_name, "w") as blasts_regions:
+        # Combination of find and cat with "+" to avoid issue of "argument list too long"
         cmd = ["find", output_folder+"/individual_blasts/", "-maxdepth", "1", "-type", "f", "-exec", "cat", "{}", "+"]
         try:
             pr = subprocess.Popen(cmd, shell=False, stdout=blasts_regions)
@@ -206,8 +199,7 @@ def concatenate_blast_results(output_folder):
 
 
 def do_blast_parallel(threads, output_folder):
-    """
-    Do the blast in parallel with a Pool.
+    """Do the blast in parallel with a Pool.
     The blast results are written to "output_folder/individual_blasts/"
     """
     global HET_FASTA_NAME
@@ -291,8 +283,7 @@ def do_blast_parallel(threads, output_folder):
 
 # Used from "DupLess.py", used after "detect_dupl_regions()" 
 def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_threshold, assembly, output_folder):
-    """
-    Filter the blast results on identity and length.
+    """Filter the blast results on identity and length.
     Write the valid blast hits to "duplications_to_remove.bed" and "discarded.regions"
     These files will contain the regions to remove from the assembly:
         - "duplications_to_remove.bed": in bed format
@@ -316,11 +307,11 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
     assembly_dict = SeqIO.index(assembly, "fasta")
 
     print("\nFiltering blast results...")
-    toRemove_name = output_folder+"/discarded.region.bed"
+    toRemove_name = output_folder+"/toDiscard.bed"
     process = subprocess.Popen(["touch", toRemove_name], stdout=subprocess.PIPE)
     process.wait()
 
-    discarded_name = output_folder+"/discarded.regions"
+    discarded_name = output_folder+"/toDiscard.regions"
     process = subprocess.Popen(["touch", discarded_name], stdout=subprocess.PIPE)
     process.wait()
 
@@ -371,9 +362,10 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
 
 
 def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
-    """
-    Main script to launch the comparison between the het regions.
+    """Main script to launch the comparison between the het regions.
     Writes the results of Blast in: "output_folder/individual_blasts/"
+    Return:
+        The name of the file with the concatenated blast outputs.
     """
     global HET_FASTA_NAME
     HET_FASTA_NAME = output_folder+"/assembly_HET_ONLY.fa"
