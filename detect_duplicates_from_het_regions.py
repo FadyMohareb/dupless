@@ -316,11 +316,11 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
     assembly_dict = SeqIO.index(assembly, "fasta")
 
     print("\nFiltering blast results...")
-    toRemove_name = output_folder+"/duplications_to_remove.bed"
+    toRemove_name = output_folder+"/discarded.region.bed"
     process = subprocess.Popen(["touch", toRemove_name], stdout=subprocess.PIPE)
     process.wait()
 
-    discarded_name = output_folder+"/discarded.bed"
+    discarded_name = output_folder+"/discarded.regions"
     process = subprocess.Popen(["touch", discarded_name], stdout=subprocess.PIPE)
     process.wait()
 
@@ -364,7 +364,7 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
                         else:
                             toRemoveHandle.write(subject_name+"\t"+str(subject_start)+"\t"+str(subject_end)+"\n")
                             discar_handle.write(subject_name+":"+str(subject_start)+"-"+str(subject_end)+"\n")
-                                
+
                         to_keep.append(reversed_pair)
 
     return(toRemove_name, discarded_name)
