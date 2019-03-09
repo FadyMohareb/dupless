@@ -53,7 +53,7 @@ def usage():
     print("     -g/--bed_gaps               A bed file containing the gaps along the genome. If given, the graphs will contain a grey background where the gaps are.")
     print("")
     print("     -i/--blast_identity         The minimum percentage of identity between the het regions to consider them duplicates (default: 90, range 0 to 100).")
-    print("     -l/--blast_length           The blast alignments with a length lower than this threshold will be filtered (default=0).")
+    print("     -l/--blast_length           The blast alignments with a length lower than this threshold will be filtered (default=300).")
     print("")
     print("     -n/--no_plot                Skip the creation of all the plots")
     print("\nSkipping part of pipeline:")
@@ -150,7 +150,7 @@ gaps_bed = None                 # Optional. Used to draw gaps as grey bars on th
 output_folder = "./DupLess_out/"
 nbThreads = 10
 blast_identity_threshold = 90   # Two regions will be considered duplicated if...
-blast_length_threshold = 0      # ...these two blast thresholds are met (min identity and min length).
+blast_length_threshold = 300      # ...these two blast thresholds are met (min identity and min length).
 skip_het_dect = False           # Possibility to skip the first step (het detection) if bed of heterozygous regions is provided.
 het_bed = None                  # Bed defining the heterozygous region (Created by DupLess, or given by the user if skip_het_dect = T).
 skip_blast = False              # Possibility to skip the "het detection" and "pairwise blasting" and just filter the blast results.

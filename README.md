@@ -122,7 +122,7 @@ python DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [wind
      -g/--bed_gaps               A bed file containing the gaps along the genome. If given, the graphs will contain a grey background where the gaps are.
 
      -i/--blast_identity         The minimum percentage of identity between the het regions to consider them duplicates (default: 90, range 0 to 100).
-     -l/--blast_length           The blast alignments with a length lower than this threshold will be filtered (default=0).
+     -l/--blast_length           The blast alignments with a length lower than this threshold will be filtered (default=300).
 
      -n/--no_plot                Skip the creation of all the plots
 
