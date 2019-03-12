@@ -1,13 +1,13 @@
 # DupLess v1.0.0:
 DupLess is a duplication removal tool for heterozygous genomes based on read coverage and pairwise alignments.
 
-Most of the currently available assemblers are designed to work on highly inbred, homozygous species and are treating differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly. For these cases, we created "DupLess", a tool capable of detecting and removing the duplicated regions issued from heterozygosity in diploid genomes.
+Most of the currently available assemblers are designed to work on highly inbred, homozygous species and are treating differing haplotypes as separate contigs. However, for outbred plant genomes where inbreeding is not possible, attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly and over-estimation of the genome length. For such cases, we created "DupLess", a tool capable of detecting and removing the duplicated regions resulting from heterozygosity in diploid genomes.
 
 ---
 
 ## Dependencies
 
-DupLess is supported on Mac and Linux.
+DupLess is supported on Linux and Mac OS.
 
 You will need to have the following dependencies:
 
