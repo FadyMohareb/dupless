@@ -146,12 +146,12 @@ python DupLess.py -t [nb_threads] -b [coverage.bed] -a [assembly.fasta] -w [wind
 
 ## Output files
 
-The outputf folder will contains the following subfolders:
+The output folder will contains the following subfolders:
 
-- individuals_beds/  contains the bed files describing the het. regions for each sequence.
-- invidual_blasts/   contains the blast results for each het. region.
-- graphs/            contains the coverage graphs for each sequence.
-- temp/              contains temp file for blast.
+- *individuals_beds/*  contains the bed files describing the het. regions for each sequence.
+- *invidual_blasts/*   contains the blast results for each het. region.
+- *graphs/*            contains the coverage graphs for each sequence (see below).
+- *temp/*              contains temp file for blast.
 - **deduplicated/**      contains the results of DupLess: **deduplicated.fasta** and **discarded.fasta**
 
 The output folder will also contain the following files:
@@ -163,6 +163,7 @@ The output folder will also contain the following files:
 
 ![alt text]( https://github.com/FadyMohareb/dupless/blob/master/figures/Histogram_coverage.png "Read Coverage Histogram")
 
+Coverage plots like the one below are produced for each sequence in the assembly (under the *graphs/* folder), heterozygous regions are identified in red:
 ![alt text]( https://github.com/FadyMohareb/dupless/blob/master/figures/Super_scaffold_1.png "Graph of coverage along a sequence")
 
 ---
