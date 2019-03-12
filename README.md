@@ -1,9 +1,7 @@
-# DupLess v1.0.0 (Duplication Less):
+# DupLess v1.0.0:
+DupLess is a duplication removal tool for heterozygous genomes based on read coverage and pairwise alignments.
 
-## A duplication removal tool for heterozygous genomes based on read coverage and pairwise alignments.
-
-Most of the currently available assemblers are designed to work on highly inbred, homozygous species and are treating differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly.
-For these cases, we created "DupLess", a tool capable of detecting and removing the duplicated regions issued from heterozygosity in diploid genomes.
+Most of the currently available assemblers are designed to work on highly inbred, homozygous species and are treating differing haplotypes as separate contigs. However, inbreeding is not always an option and attempts to assemble a highly heterozygous species often results in a heavily duplicated assembly. For these cases, we created "DupLess", a tool capable of detecting and removing the duplicated regions issued from heterozygosity in diploid genomes.
 
 ---
 
@@ -13,25 +11,18 @@ DupLess is supported on Mac and Linux.
 
 You will need to have the following dependencies:
 
-**Note:** The following python packages are already built-in from python2.7 and do not need to be installed: getopt, subprocess, multiprocessing, sys and os. Moreover, **awk** and **sed** should also be available on most systems.
+**Note:** The following python packages are already built-in from python2.7 and do not need to be installed:
+```
+getopt
+subprocess
+multiprocessing
+sys
+os 
+````
 
 - **Python v2 or v3**
 - **The following python packages:** [numpy](http://www.numpy.org/ "Numpy Homepage"), [pandas](https://pandas.pydata.org/ "Pandas Homepage"), [biopython](https://biopython.org/ "biopython Homepage"), [matplotlib.pyplot](https://matplotlib.org/ "Matplotlib Homepage"), getopt, subprocess, multiprocessing, sys, os.
 - [samtools v1.9](http://www.htslib.org/ "samtools Homepage") or higher (/!\ DupLess will not work with version prior to 1.9, as it needs the "-o" parameter)
-- [bedtools v2.27.1](https://bedtools.readthedocs.io/en/latest/ "Bedtools Homepage") or higher (lower versions should also work now, but only v2.26 has been tested)
-- [blastn v2.6.0+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download "Blast download page") or higher
-- **awk** and **sed**
-
-
-## Installation
-
-DupLess itself is a collection of python scripts, no installation is needed. You just have to clone the repository (or directly download the python files) and run "python DupLess.py" to use it.
-```
-     git clone https://github.com/MCorentin/DupLess
-     cd DupLess
-     python DupLess.py --help
-```
-
 To install samtools 1.9:
 ```
 	wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2
@@ -39,13 +30,26 @@ To install samtools 1.9:
 	cd samtools-1.9
 	make
 ```
-To install samtools you may also have to install HTSlib (cf: https://www.biostars.org/p/328831/)
+**To install samtools** you may also have to install HTSlib (cf: https://www.biostars.org/p/328831/)
+
+- [bedtools v2.27.1](https://bedtools.readthedocs.io/en/latest/ "Bedtools Homepage") or higher (lower versions should also work now, but only v2.26 has been tested)
+- [blastn v2.6.0+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download "Blast download page") or higher
+- **awk** and **sed**
 
 DupLess needs to have the dependencies (samtools ,bedtools, blastn, awk and sed) available in the $PATH to work.
 You can run the following command to add a tool to the PATH variable:
 ```
 	export PATH=/path/to/tool_folder/:$PATH
 ```
+
+## Installation
+DupLess itself is a collection of python scripts, no installation is needed. You just have to clone the repository (or directly download the python files) and run "python DupLess.py" to use it.
+```
+     git clone https://github.com/MCorentin/DupLess
+     cd DupLess
+     python DupLess.py --help
+```
+
 
 ## Testing the installation:
 
@@ -63,6 +67,12 @@ To test if your DupLess installation works you can run the following command (~3
 
 The 15 duplicated sequences should be removed or heavily truncated, you can filter the fasta by length to remove remaining artifacts.
 
+
+After this pipeline **AT_duplicated.fa** contained 15 duplicated regions, with 25x coverage. The non-duplicated regions had ~50x coverage. DupLess was run on this dataset and managed to remove 95% of the induced duplicated sequences.
+
+The list of duplicated contigs is available in: "test_data/additional_data/mutated_list.txt".
+
+### How to simulate reads for testing purposes ####
 The test dataset was created with the following pipeline (to simulate duplication due to heterozygosity):
 
  1. Extraction of chr3 of *Arabidopsis thaliana* assembly (ftp://ftp.ensemblgenomes.org/pub/plants/release-42/fasta/arabidopsis_thaliana/dna/).
@@ -71,11 +81,7 @@ The test dataset was created with the following pipeline (to simulate duplicatio
  4. Extraction of 15 regions from the mutated genome (~33 kbp in total) and concatenation of these 15 sequences with the contig assembly (to induce duplication).
  5. Simulation of reads with 25x coverage on the whole assembly.
  6. Simulation of reads with 25x coverage only on non-duplicated regions.
-
-After this pipeline **AT_duplicated.fa** contained 15 duplicated regions, with 25x coverage. The non-duplicated regions had ~50x coverage. DupLess was run on this dataset and managed to remove 95% of the induced duplicated sequences.
-
-The list of duplicated contigs is available in: "test_data/additional_data/mutated_list.txt".
-
+ 
 ---
 
 
@@ -157,9 +163,9 @@ The output folder will also contain the following files:
 
 **We recommand filtering the resulting deduplicated assembly by length as DupLess does not remove entire contigs, so some very small contigs may be present in the output**
 
-![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/figures/Histogram_coverage.png "Histogram of coverage")
+![alt text]( https://github.com/FadyMohareb/dupless/blob/master/figures/Histogram_coverage.png "Read Coverage Histogram")
 
-![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/figures/Super_scaffold_1.png "Graph of coverage along a sequence")
+![alt text]( https://github.com/FadyMohareb/dupless/blob/master/figures/Super_scaffold_1.png "Graph of coverage along a sequence")
 
 ---
 
@@ -188,7 +194,7 @@ cov <- read.table("illumina.coverage")
 hist(cov$V3)
 ```
 If your genome is heterozygous, you should obtain two peaks (see graph below):
-![alt text](https://bitbucket.org/MCorentin/hetdect/src/master/figures/Histogram_coverage_R.png "Histogram of coverage")
+![alt text](https://github.com/FadyMohareb/dupless/blob/master/figures/Histogram_coverage.png "Histogram of coverage")
 
 The second peak corresponds to the coverage on the homozygous regions, and the value on the x-axis for the maximum of this peak corresponds to the homozygous coverage. DupLess also generates a histogram of the coverage.
 
@@ -239,7 +245,7 @@ The second step of the analysis is the pairwise megablast alignment of the heter
 
 For each aligned pair DupLess removes one from *haplotype1.fasta* and the other from *haplotype2.fasta*, so no genomic data is lost. The one removed for *haplotype1.fasta* is always the one on the smaller sequence (contig/scaffold) of the pair, this is done to reduce the possible misassemblies introduced by DupLess, indeed aligned pairs are mostly one large sequence that align to a much smaller and almost only heterozygous sequence, see figure below. Hence, *haplotype1.fasta* is expected to be of better quality than *haplotype2.fasta*.
 
-![alt text](small_contig.png "Small contig, will be removed from haplotype1.fasta")
+![alt text](https://github.com/FadyMohareb/dupless/blob/master/figures/small_contig.png "Small contig, will be removed from haplotype1.fasta")
 
 Output files are produced all along DupLess pipeline, so that the user can explore in more details how the duplications have been removed:
  
