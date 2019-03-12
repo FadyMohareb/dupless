@@ -97,8 +97,6 @@ The test dataset was created with the following pipeline (to simulate duplicatio
 
 - A bed file containing the gaps coordinates in the assembly. If provided, they will be represented as grey bars on the coverage graphs.
 
-- If you wish to skip the detection of heterozygous regions based on the coverage, you can directly input a bed file with the regions to consider for duplication. (This file is also produced during DupLess first step)
-
 
 ## Usage
 
@@ -157,9 +155,9 @@ The outputf folder will contains the following subfolders:
 - **deduplicated/**      contains the results of DupLess: **deduplicated.fasta** and **discarded.fasta**
 
 The output folder will also contain the following files:
-- A bed file with the identified heterozygous regions, useful if one wants to explore the regions in more details ("Heterozygous_regions_ALL.bed").
-- A histogram of the coverage distribution, to help the user decide the expected coverage value (see below).
-- The raw results of the blast between the heterozygous regions ("All_Blasts_scaffolds_coord.tab").
+- *Heterozygous_regions_ALL.bed*: A bed file with the identified heterozygous regions, useful if one wants to explore the regions in more details.
+- *Histogram_coverage.png*: A histogram of the coverage distribution, to help the user decide the expected coverage value (see below).
+- *All_Blasts_scaffolds_coord.tab*: The raw results of the blast between the heterozygous regions.
 
 **We recommand filtering the resulting deduplicated assembly by length as DupLess does not remove entire contigs, so some very small contigs may be present in the output**
 
@@ -196,7 +194,7 @@ hist(cov$V3)
 If your genome is heterozygous, you should obtain two peaks (see graph below):
 ![alt text](https://github.com/FadyMohareb/dupless/blob/master/figures/Histogram_coverage.png "Histogram of coverage")
 
-The second peak corresponds to the coverage on the homozygous regions, and the value on the x-axis for the maximum of this peak corresponds to the homozygous coverage. DupLess also generates a histogram of the coverage.
+The second peak corresponds to the coverage on the homozygous regions, and the value on the x-axis for the maximum of this peak corresponds to the homozygous coverage. One of the first step of DupLess is plotting the coverage histogram with a red bar representing the expected coverage to help you deciding if you chose the right value for this parameter (see figure above).
 
 ### How to choose the right value for the window length ("-w/--window_size" option):
 
@@ -243,9 +241,9 @@ Only the heterozygous regions are considered for later analysis and consecutives
 
 The second step of the analysis is the pairwise megablast alignment of the heterozygous regions. Each region is aligned against all the others, only the best hit is retained for each region. After all the hits have been found, they are filtered by identity (-i/--blast_identity) and length (-l/--blast_length). The aligned pairs that are left after the filtering are the regions to remove from the assembly. DupLess does not remove the whole region, only the part that aligned.
 
-For each aligned pair DupLess removes one from *haplotype1.fasta* and the other from *haplotype2.fasta*, so no genomic data is lost. The one removed for *haplotype1.fasta* is always the one on the smaller sequence (contig/scaffold) of the pair, this is done to reduce the possible misassemblies introduced by DupLess, indeed aligned pairs are mostly one large sequence that align to a much smaller and almost only heterozygous sequence, see figure below. Hence, *haplotype1.fasta* is expected to be of better quality than *haplotype2.fasta*.
+For each aligned pair DupLess removes always the one on the smaller sequence (contig/scaffold) of the pair, this is done to reduce the possible misassemblies introduced by DupLess, indeed aligned pairs are mostly one large sequence that align to a much smaller and almost only heterozygous sequence, see figure below.
 
-![alt text](https://github.com/FadyMohareb/dupless/blob/master/figures/small_contig.png "Small contig, will be removed from haplotype1.fasta")
+![alt text](https://github.com/FadyMohareb/dupless/blob/master/figures/small_contig.png "Small contig, will be removed from deduplicated.fasta")
 
 Output files are produced all along DupLess pipeline, so that the user can explore in more details how the duplications have been removed:
  
@@ -257,7 +255,7 @@ Output files are produced all along DupLess pipeline, so that the user can explo
 
 ## Troubleshooting:
 
-**Q:** haplotype1.fasta is the same as the assembly despite the "toRemoveFromhap1.tsv" being not empty.
+**Q:** deduplicated.fasta is the same as the assembly despite the "toDiscard.bed" being not empty.
 
 **A:** Check if your assembly does not contain Windows new line characters: "\r". You can use "cat -v file", the hidden characters will appear as "^M". To resolve this issue you can run:
 
