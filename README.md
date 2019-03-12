@@ -22,7 +22,7 @@ os
 
 - **Python v2 or v3**
 - **The following python packages:** [numpy](http://www.numpy.org/ "Numpy Homepage"), [pandas](https://pandas.pydata.org/ "Pandas Homepage"), [biopython](https://biopython.org/ "biopython Homepage"), [matplotlib.pyplot](https://matplotlib.org/ "Matplotlib Homepage"), getopt, subprocess, multiprocessing, sys, os.
-- [samtools v1.9](http://www.htslib.org/ "samtools Homepage") or higher (/!\ DupLess will not work with version prior to 1.9, as it needs the "-o" parameter)
+- [samtools v1.9](http://www.htslib.org/ "samtools Homepage") or higher (**DupLess will not work with version prior to 1.9, as it needs the "-o" parameter**)
 To install samtools 1.9:
 ```
 	wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2
@@ -34,7 +34,7 @@ To install samtools 1.9:
 
 - [bedtools v2.27.1](https://bedtools.readthedocs.io/en/latest/ "Bedtools Homepage") or higher (lower versions should also work now, but only v2.26 has been tested)
 - [blastn v2.6.0+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download "Blast download page") or higher
-- **awk** and **sed**
+- **awk** and **sed** (Available by default on Linux Systems)
 
 DupLess needs to have the dependencies (samtools ,bedtools, blastn, awk and sed) available in the $PATH to work.
 You can run the following command to add a tool to the PATH variable:
@@ -53,7 +53,7 @@ DupLess itself is a collection of python scripts, no installation is needed. You
 
 ## Testing the installation:
 
-The "test_data" folder contains two files:
+The [test_data](https://github.com/FadyMohareb/dupless/tree/master/test_data) folder contains two files:
 
  - **AT_duplicated.fa**: this is a subset of chr3 of *Arabidopsis thaliana* with artificially induced duplications (15 sequences, see below for explanations)
  - **AT_duplicated_simReads.sorted.coverage.gz**: the coverage file for these 3 contigs, based on simulated reads **you will need to unzip this file to run DupLess**.
