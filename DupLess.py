@@ -12,6 +12,8 @@ import getopt
 import subprocess
 import sys
 import os
+from Bio import SeqIO
+import pandas as pd
 
 import detect_het_regions_from_coverage as dh
 import detect_duplicates_from_het_regions as dd
@@ -66,6 +68,90 @@ def usage():
     print("     -h/--help                   Print the usage and help and exit.")
     print("     -v/--version                Print the version and exit.")
 
+
+
+def phasing(toRemoveBed, blast_output,outname, assembly_name, output_folder):
+    """Reading the heterozygous regions blast tab and the toRemoveBed to locate to what subject contigs the queries (recorded in the Bed) have matched.
+    Therefore, we will generate a second bed containing subject sequences instead of query sequences, and the removal of these will be the second haplotype.
+    """
+    file_ok, error_mssg =  ud.check_file(blast_output)
+    if not(file_ok):
+        print("Blast output file could not be found. See error message below for more details:")
+        print(error_mssg)
+        sys.exit(2)
+
+    file_ok, error_mssg = ud.check_file(assembly_name)
+    if not(file_ok):
+        print("Assembly fasta could not be found. See error message below for more details:")
+        print(error_mssg)
+        sys.exit(2)
+    
+    toRemoveBed1 = output_folder+"/toDiscard_hap1.bed"
+    process = subprocess.Popen(["touch", toRemoveBed1], stdout=subprocess.PIPE)
+    process.wait()    
+    toRemoveBed2 = output_folder+"/toDiscard_hap2.bed"
+    process = subprocess.Popen(["touch", toRemoveBed2], stdout=subprocess.PIPE)
+    process.wait()
+    
+    # Needed to quickly get the lengths of the sequences
+    assembly_dict = SeqIO.index(assembly_name, "fasta")
+    
+    to_keep = list()
+    blast_df = pd.DataFrame(columns=['query_name','subject_name','query_start','query_end','subject_start','subject_end','q_length','s_length','pair','reversed_pair'])
+    with open(blast_output, "r") as het_blasts:
+        # For each duplicated pair, we write the blast values to a dataframe
+        for blast in het_blasts:
+            tabs = blast.split("\t")
+            # tabs[2] contains the blast identity
+            # tabs[3] contains the length of the blast hit
+            # For the output format 6 (which is used by DupLess)
+            if((float(tabs[2]) >= blast_identity_threshold) and (float(tabs[3]) >= blast_length_threshold)):
+                query_name = tabs[0]
+                subject_name = tabs[1]
+                # The QUERY should always be "start stop", but if there is a inverted alignment, the SUBJECT can be "stop   start".
+                # So we get the start by taking the min and the stop with the max
+                query_start = int(tabs[6])
+                query_end = int(tabs[7])
+                subject_start = min(int(tabs[8]), int(tabs[9]))
+                subject_end = max(int(tabs[8]), int(tabs[9]))
+
+                q_length = len(assembly_dict[query_name])
+                s_length = len(assembly_dict[subject_name])
+
+                # If "S1 S2" is a valid blast hit, we don't want to eliminate "S2 S1" later (double removal),
+                # so we will add the reversed pair "S2_start_stop;S1_start_stop" in to_keep.
+                # We add the start and stop in case there are several hits between different regions on the same two scaffolds.
+                region1 = query_name+"_"+str(query_start)+"_"+str(query_end)
+                region2 = subject_name+"_"+str(subject_start)+"_"+str(subject_end)
+                pair = region1+";"+region2
+                reversed_pair = region2+";"+region1
+                
+                #adding all parsed blast variables to a pandas dataframe row
+                blast_df.loc[len(blast_df)]=[query_name,subject_name,query_start,query_end,subject_start,subject_end,q_length,s_length,pair,reversed_pair]
+                
+
+
+    #must also check for the position in the contig of the hit, if its start/end or not, so might have to write all this info to a dictionary or pandas dataframe
+    #checking for duplicate rows based on 'query_name' column
+    multipleHits = blast_df[blast_df.duplicated(['query_name'])] 
+    #if there have been hits it is time to treat them
+    if not multipleHits.empty:
+        print('there are multiple hits')
+    print(blast_df) 
+    
+    #writing bed files, and eliminating the reverse pair of the written pairs so as to not appear twice
+    for index, row in blast_df.iterrows():
+        with open(toRemoveBed1, "a") as toRemove1Handle,open(toRemoveBed2, "a") as toRemove2Handle:
+            if(row['pair'] not in to_keep):
+                toRemove1Handle.write(row['query_name']+"\t"+str(row['query_start'])+"\t"+str(row['query_end'])+"\n")    #"random" haplotype generation based on query/subject without
+                toRemove2Handle.write(row['subject_name']+"\t"+str(row['subject_start'])+"\t"+str(row['subject_end'])+"\n")#looking at lengths
+                to_keep.append(row['reversed_pair'])
+    
+    
+    remove_duplications_assembly("hap1.fasta", assembly_name, toRemoveBed1, output_folder)
+    remove_duplications_assembly("hap2.fasta", assembly_name, toRemoveBed2, output_folder)  
+    
+    
 
 def remove_duplications_assembly(outname, assembly_name, bedname, output_folder):
     """From an assembly and a bed of regions to remove, create a fasta with duplications removed.
@@ -308,6 +394,8 @@ file_ok, error_mssg = ud.check_file(blast_output)
 if file_ok:
     # Filter the blasts by identity and length
     toRemoveBed, discardedBed = dd.filter_blast_results(blast_output, blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)
+    
+    #######discardedBed is not a Bed, it is a regions I believe
 else:
     print("Error with the blast output file: "+error_mssg)
     usage()
@@ -323,6 +411,9 @@ discarded_assembly = output_folder+"/deduplicated/discarded.fasta"
 print("Generating the deduplicated fasta files from the blast results...")
 remove_duplications_assembly(deduplicated_assembly, assembly_name, toRemoveBed, output_folder)
 generate_discarded_fasta(assembly_name, discardedBed, discarded_assembly)
+phasing(toRemoveBed, blast_output,"hap2.fasta", assembly_name, output_folder)
+
+
 
 # If we skip blast, no intermediate files created, no need to clean
 if not skip_blast:
