@@ -14,6 +14,7 @@ import sys
 import os
 from Bio import SeqIO
 import pandas as pd
+import re
 
 import detect_het_regions_from_coverage as dh
 import detect_duplicates_from_het_regions as dd
@@ -70,7 +71,7 @@ def usage():
 
 
 
-def phasing(toRemoveBed, blast_output,outname, assembly_name, output_folder):
+def phasing(toRemoveBed, blast_output, outname, assembly_name, output_folder):
     """Reading the heterozygous regions blast tab and the toRemoveBed to locate to what subject contigs the queries (recorded in the Bed) have matched.
     Therefore, we will generate a second bed containing subject sequences instead of query sequences, and the removal of these will be the second haplotype.
     """
@@ -92,12 +93,15 @@ def phasing(toRemoveBed, blast_output,outname, assembly_name, output_folder):
     toRemoveBed2 = output_folder+"/toDiscard_hap2.bed"
     process = subprocess.Popen(["touch", toRemoveBed2], stdout=subprocess.PIPE)
     process.wait()
+    repetitiveBed = output_folder+"/repetitive.bed"
+    process = subprocess.Popen(["touch", repetitiveBed], stdout=subprocess.PIPE)
+    process.wait()
     
     # Needed to quickly get the lengths of the sequences
     assembly_dict = SeqIO.index(assembly_name, "fasta")
     
     to_keep = list()
-    blast_df = pd.DataFrame(columns=['query_name','subject_name','query_start','query_end','subject_start','subject_end','q_length','s_length','pair','reversed_pair'])
+    blast_df = pd.DataFrame(columns=['query_name','subject_name','query_start','query_end','subject_start','subject_end','q_length','s_length','pair','reversed_pair','subject_is_reversed'])
     with open(blast_output, "r") as het_blasts:
         # For each duplicated pair, we write the blast values to a dataframe
         for blast in het_blasts:
@@ -114,7 +118,8 @@ def phasing(toRemoveBed, blast_output,outname, assembly_name, output_folder):
                 query_end = int(tabs[7])
                 subject_start = min(int(tabs[8]), int(tabs[9]))
                 subject_end = max(int(tabs[8]), int(tabs[9]))
-
+                subject_is_reversed = True if int(tabs[8])>int(tabs[9]) else False
+              
                 q_length = len(assembly_dict[query_name])
                 s_length = len(assembly_dict[subject_name])
 
@@ -126,30 +131,70 @@ def phasing(toRemoveBed, blast_output,outname, assembly_name, output_folder):
                 pair = region1+";"+region2
                 reversed_pair = region2+";"+region1
                 
-                #adding all parsed blast variables to a pandas dataframe row
-                blast_df.loc[len(blast_df)]=[query_name,subject_name,query_start,query_end,subject_start,subject_end,q_length,s_length,pair,reversed_pair]
-                
-
-
-    #must also check for the position in the contig of the hit, if its start/end or not, so might have to write all this info to a dictionary or pandas dataframe
-    #checking for duplicate rows based on 'query_name' column
-    multipleHits = blast_df[blast_df.duplicated(['query_name'])] 
-    #if there have been hits it is time to treat them
-    if not multipleHits.empty:
-        print('there are multiple hits')
-    print(blast_df) 
+                #Adding all parsed blast variables to a pandas dataframe row
+                blast_df.loc[len(blast_df)]=[query_name,subject_name,query_start,query_end,subject_start,subject_end,q_length,s_length,pair,reversed_pair,subject_is_reversed]
     
-    #writing bed files, and eliminating the reverse pair of the written pairs so as to not appear twice
+    
+    
+    #Using kat sect to count kmers to find repetitive regions in the original assembly
+    popen_args=["kat","sect","-E","-F","-t",str(nbThreads),"-M",str(4),assembly_name,assembly_name, "-v"]
+    process = subprocess.Popen(popen_args, stdout=subprocess.PIPE)
+    process.wait()
+    #Reading the fasta with the repetitive regions and extracting their sequence locations
+    repetitive_region_headers=[x for x in open("kat-sect-repetitive.fa").readlines() if x.startswith(">")]
+    repetitive_df = pd.DataFrame(columns=['contig','start','end'])
+    for x in repetitive_region_headers:
+      contig=x.split("__")[0][1:]
+      contig_positions = re.search('pos:(.*)_cov', x).group(1)
+      start=int(contig_positions.split(":")[0])
+      end=int(contig_positions.split(":")[1])
+      repetitive_df.loc[len(repetitive_df)]=[contig,start,end]
+    
+    
+    
+    
+    
+    
+    ########################################## 
+    #must also check for the position in the contig of the hit, if its start/end or not
+    #Checking for duplicate rows based on the name, start and end of the query:(maybe should also check if there are internal blasts and much more, there is a lot of detail here
+    multipleHits = blast_df[blast_df.duplicated(['query_name','query_start','query_end'])] 
+    #if there have been hits it is time to treat them accordingly
+    if not multipleHits.empty:
+      print('there are multiple hits')
+    ############################################################################   
+        
+    
+    
+    
+    
+    
+    
+    
+    #Writing duplicated bed files, and eliminating the reverse pair of the written pairs so as to not appear twice
     for index, row in blast_df.iterrows():
         with open(toRemoveBed1, "a") as toRemove1Handle,open(toRemoveBed2, "a") as toRemove2Handle:
             if(row['pair'] not in to_keep):
-                toRemove1Handle.write(row['query_name']+"\t"+str(row['query_start'])+"\t"+str(row['query_end'])+"\n")    #"random" haplotype generation based on query/subject without
-                toRemove2Handle.write(row['subject_name']+"\t"+str(row['subject_start'])+"\t"+str(row['subject_end'])+"\n")#looking at lengths
-                to_keep.append(row['reversed_pair'])
-    
-    
-    remove_duplications_assembly("hap1.fasta", assembly_name, toRemoveBed1, output_folder)
-    remove_duplications_assembly("hap2.fasta", assembly_name, toRemoveBed2, output_folder)  
+                toRemove1Handle.write(str(row['query_name'])+"\t"+str(row['query_start'])+"\t"+str(row['query_end'])+"\n")#"random" haplotype generation based on query/subject
+                toRemove2Handle.write(str(row['subject_name'])+"\t"+str(row['subject_start'])+"\t"+str(row['subject_end'])+"\n")#without looking at lengths
+                to_keep.append(row['reversed_pair'])                        
+    #Writing bed file of the kat sect repetitive regions fasta  
+    for index, row in repetitive_df.iterrows():
+        with open(repetitiveBed, "a") as repetitiveHandle:
+          repetitiveHandle.write(str(row['contig'])+"\t"+str(row['start'])+"\t"+str(row['end'])+"\n")
+     
+    #Subtracting repetitive features from the discard beds         
+    popen_args=["bedtools","subtract","-a",toRemoveBed1,"-b",repetitiveBed]
+    with open("hap1.bed","wb") as out:
+      process = subprocess.Popen(popen_args, stdout=out)   
+    popen_args=["bedtools","subtract","-a",toRemoveBed2,"-b",repetitiveBed]
+    with open("hap2.bed","wb") as out:
+      process = subprocess.Popen(popen_args, stdout=out)
+          
+                
+    ################################################################################    
+    remove_duplications_assembly("hap1.fasta", assembly_name, "hap1.bed", output_folder)
+    remove_duplications_assembly("hap2.fasta", assembly_name, "hap2.bed", output_folder)  
     
     
 
