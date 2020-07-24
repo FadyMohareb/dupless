@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+# Part of DupLess dealing with the detection of the heterozygous regions of the
+# assembly, based on the read coverage
+
 import pandas as pd
 import numpy as np
 import sys

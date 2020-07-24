@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+# Part of DupLess dealing with the detection of duplications from the heterozygous
+# regions detected by the previous step (detect_het_regions_from_coverage)
+
 import subprocess
 from multiprocessing import Pool
 from Bio import SeqIO
