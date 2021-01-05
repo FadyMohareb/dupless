@@ -326,7 +326,7 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
         # For each duplicated pair, we write the coordinates to the ".bed" and ".regions" files
         with open(toRemove_name, "a") as toRemove_handle, open(toDiscard_name, "a") as toDiscard_handle, open(toFilter_name, "a") as toFilter_handle:
             #Write header for "toFilter.list" file
-            toFilter_handle.write('# List of contigs with a blast overlap of more than '+overlap_threshold+'% of their length')
+            toFilter_handle.write('# List of contigs with a blast overlap of more than '+str(overlap_threshold)+'% of their length')
 
             for blast in all_blasts:
                 tabs = blast.split("\t")
