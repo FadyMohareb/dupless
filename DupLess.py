@@ -1,6 +1,9 @@
 #!/usr/bin/python
 
-# Main DupLess script
+# DupLess is a python script to detect and remove artifact duplications in assemblies.
+# Assemblies from heterozygous genomes tend to create two contigs instead of 
+# one in areas of high heterozygosity. DupLess detects these regions based on 
+# read coverage and sequence similarity.
 
 # Dependencies:
 #   python v2.7 or higher
@@ -22,7 +25,25 @@ import utils_dupless as ud
 
 
 global VERSION
-VERSION = "1.0.0"
+VERSION = "0.1.0"
+
+# Default values for the input
+window_size =  1000             # The coverage of each window will be based on the median of all the coverages inside the window.
+coverage_bed = None             # Bed file with the coverage value for each position. Can be produced with "bedtools coverage".
+assembly_name = None            # Assembly in fasta format, used to extract the het regions and also check the scaffold lengths.
+expected_coverage = None        # Any window with 0 < coverage < expected_cov/1.5 will be considered as heterozygous.
+gaps_bed = None                 # Optional. Used to draw gaps as grey bars on the coverage graphs.
+output_folder = "./DupLess_out/"
+nbThreads = 10
+blast_identity_threshold = 90   # Two regions will be considered duplicated if...
+blast_length_threshold = 300    # ...these two blast thresholds are met (min identity and min length).
+blast_overlap_threshold = 90.0  # % of duplication to cover contig (default 90%).
+skip_het_dect = False           # Possibility to skip the first step (het detection) if bed of heterozygous regions is provided.
+het_bed = None                  # Bed defining the heterozygous region (Created by DupLess, or given by the user if skip_het_dect = T).
+skip_blast = False              # Possibility to skip the "het detection" and "pairwise blasting" and just filter the blast results.
+blast_output = None             # Default output file for blast results (given by the user if skip_blast = T)
+skip_plot = False               # Skip the generation of the coverage plots
+
 
 def print_version():
     """Print the version.
@@ -42,21 +63,22 @@ def usage():
     print("                                 /!\ If using paired end reads: make sure that you set the -w or -l option higher than the insert size,")
     print("                                     to avoid false positives due to coverage drop at the ends of contigs (because of unaligned mates).")
     print("\nOptional:")
-    print("     -t/--nThreads               The number of threads (default 10)")
-    print("     -o/--out_folder             The output folder (default './DupLess_out/')")
+    print("     -t/--nThreads               The number of threads (default ",nbThreads,")")
+    print("     -o/--out_folder             The output folder (default '",output_folder,"')")
     print("")
     print("     -c/--expected_cov           The expected read coverage for the homozygous regions. The homozygosity / heterozygosity will be determined based on this value.")
-    print("                                 You can determine the value to use by plotting the coverage distribution. It should correspond to the homozygous peak")
+    print("                                 You can determine the value by plotting the coverage distribution. It should correspond to the homozygous peak")
     print("                                 If no value is given, it will be based on the mode of the coverage distribution (not reliable if high heterozygosity).")
     print("")
-    print("     -w/--window_size            The size of the windows in basepairs (default: 1000)")
+    print("     -w/--window_size            The size of the windows in basepairs (default: ",window_size,")")
     print("                                 The value of the coverage for each window will be the median of the coverage at each base.")
     print("                                 All the windows classified as 'heterozygous' will be considered for the detection of duplication.")
     print("")
     print("     -g/--bed_gaps               A bed file containing the gaps along the genome. If given, the graphs will contain a grey background where the gaps are.")
     print("")
-    print("     -i/--blast_identity         The minimum percentage of identity between the het regions to consider them duplicates (default: 90, range 0 to 100).")
-    print("     -l/--blast_length           The blast alignments with a length lower than this threshold will be filtered (default=300).")
+    print("     -i/--blast_identity         The minimum percentage of identity between the het regions to consider them duplicates (default: ",blast_identity_threshold,", range 0 to 100).")
+    print("     -l/--blast_length           The blast alignments with a length lower than this threshold will be filtered (default=",blast_length_threshold,").")
+    print("     -p/--blast_overlap          The contigs overlapped at least by this threshold are written to a filter list (default=",blast_overlap_threshold,").")
     print("")
     print("     -n/--no_plot                Skip the creation of all the plots")
     print("\nSkipping part of pipeline:")
@@ -73,25 +95,10 @@ def usage():
 #=================================================================
 #                           GetOpt                               =
 #=================================================================
-window_size =  1000             # The coverage of each window will be based on the median of all the coverages inside the window.
-coverage_bed = None             # Bed file with the coverage value for each position. Can be produced with "bedtools coverage".
-assembly_name = None            # Assembly in fasta format, used to extract the het regions and also check the scaffold lengths.
-expected_coverage = None        # Any window with 0 < coverage < expected_cov/1.5 will be considered as heterozygous.
-gaps_bed = None                 # Optional. Used to draw gaps as grey bars on the coverage graphs.
-output_folder = "./DupLess_out/"
-nbThreads = 10
-blast_identity_threshold = 90   # Two regions will be considered duplicated if...
-blast_length_threshold = 300      # ...these two blast thresholds are met (min identity and min length).
-skip_het_dect = False           # Possibility to skip the first step (het detection) if bed of heterozygous regions is provided.
-het_bed = None                  # Bed defining the heterozygous region (Created by DupLess, or given by the user if skip_het_dect = T).
-skip_blast = False              # Possibility to skip the "het detection" and "pairwise blasting" and just filter the blast results.
-blast_output = None             # Default output file for blast results (given by the user if skip_blast = T)
-skip_plot = False               # Skip the generation of the coverage plots
-
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "t:w:b:a:c:g:o:s:f:i:l:nhv", ["nThreads=", "window_size=", "bed_cov=", "assembly=", "expected_cov=", "bed_gaps=", 
-                                                                            "out_folder=", "skip_het_detection=", "filter_blast_only=",
-                                                                            "blast_identity=", "blast_length=", "no_plot", "help", "version"])
+    opts, args = getopt.getopt(sys.argv[1:], "t:w:b:a:c:g:o:s:f:i:l:p:nhv", ["nThreads=", "window_size=", "bed_cov=", "assembly=", "expected_cov=", "bed_gaps=", 
+                                                                             "out_folder=", "skip_het_detection=", "filter_blast_only=",
+                                                                             "blast_identity=", "blast_length=", "blast_overlap=", "no_plot", "help", "version"])
 except getopt.GetoptError as err:
     print(str(err))
     usage()
@@ -123,6 +130,8 @@ for o,a in opts:
         blast_identity_threshold = int(a)
     elif o in ("-l", "--blast_length"):
         blast_length_threshold = float(a)
+    elif o in ("-p", "--blast_overlap"):
+        blast_overlap_threshold = float(a)
     elif o in ("-n", "--no_plot"):
         skip_plot = True
     elif o in ("-h", "--help"):
@@ -166,12 +175,12 @@ if(nbThreads <= 0):
     sys.exit(2)
 
 if((blast_identity_threshold < 0) or (blast_identity_threshold > 100)):
-    print("The blast identity treshold (-i/--blast_identity option) can not be higher than 100 or lower than 0. Current value: "+str(blast_identity_threshold)+"\n")
+    print("The blast identity treshold (-i/--blast_identity) must be between 0 and 100. Current value: "+str(blast_identity_threshold)+"\n")
     usage()
     sys.exit(2)
 
 if((blast_length_threshold < 0)):
-    print("The blast coverage treshold (-l/--blast_length option) can not be lower than 0. Current value: "+str(blast_length_threshold)+"\n")
+    print("The blast coverage treshold (-l/--blast_length) can not be lower than 0. Current value: "+str(blast_length_threshold)+"\n")
     usage()
     sys.exit(2)
 
@@ -185,7 +194,8 @@ if((blast_length_threshold < 0)):
 # graphs/            contains the coverage graphs for each sequence.
 # temp/              contains temp file for blast.
 # deduplicated/      contains the results of DupLess: deduplicated.fasta and discarded.fasta
-for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/deduplicated"]:
+for folder in [output_folder, output_folder+"/individual_beds", output_folder+"/graphs", 
+               output_folder+"/individual_blasts", output_folder+"/temp", output_folder+"/deduplicated"]:
     try:
         pr = subprocess.Popen(["mkdir", folder], shell=False, stdout=subprocess.PIPE)
         pr.communicate()
@@ -209,7 +219,8 @@ if not skip_het_dect:
     file_ok, error_mssg = ud.check_file(coverage_bed)
     if file_ok:
         # Launch the bed and graph creation for heterozygous regions, detection based on coverage values.
-        het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder, nbThreads, skip_plot)
+        het_bed = dh.detect_het_regions(coverage_bed, gaps_bed, expected_coverage, window_size, output_folder, 
+                                        nbThreads, skip_plot)
     else:
         print("Error with the coverage bed file: "+error_mssg)
         usage()
@@ -238,7 +249,9 @@ if not skip_blast:
 file_ok, error_mssg = ud.check_file(blast_output)
 if file_ok:
     # Filter the blasts by identity and length
-    toRemoveBed, discardedBed = dd.filter_blast_results(blast_output, blast_identity_threshold, blast_length_threshold, assembly_name, output_folder)
+    toRemoveBed, discardedBed, toFilterList = dd.filter_blast_results(blast_output, blast_identity_threshold, 
+                                                                      blast_length_threshold, blast_overlap_threshold, 
+                                                                      assembly_name, output_folder)
 else:
     print("Error with the blast output file: "+error_mssg)
     usage()
@@ -265,3 +278,4 @@ if not skip_blast:
 print("Done !\n")
 print("Deduplicated assembly generated in: " + deduplicated_assembly)
 print("Discarded sequences in: " + discarded_assembly)
+print("Contigs with a blast hit covering more than ", blast_overlap_threshold, "% of their length in: toFilter.list")

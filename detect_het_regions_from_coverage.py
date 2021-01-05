@@ -39,7 +39,6 @@ def get_colors(classifications):
     return colors
 
 
-
 def classify_median(value, expected_coverage):
     """Take a coverage median for a window (value) and an expected coverage and return a classification:
          Heterozygous if:  "0 < value <=  EC / 1.5"
@@ -60,10 +59,10 @@ def classify_median(value, expected_coverage):
     return cl
 
 
-
-def create_plot_coverage(starts, medians, classifications, contig_coverage, contig_name, gaps_dataframe, window_size, output_folder):
-    """Generate the coverage plot from a list of start positions and a list of coverages (generally corresponding to a contig/scaffold).
-    Saves it under output_folder/contig_name+".png".
+def create_plot_coverage(starts, medians, classifications, contig_coverage, contig_name, gaps_dataframe, window_size, 
+                         output_folder):
+    """Generate the coverage plot from a list of start positions and a list of coverages (generally corresponding to a 
+    contig/scaffold). Saves it under output_folder/contig_name+".png".
     """
     filename = contig_name+".png"
 
@@ -99,7 +98,8 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
             gaps_df_contig = gaps_dataframe[gaps_dataframe['contig'].isin([contig_name])]
             if(len(gaps_df_contig['contig']) > 0):
                 for i in range(0, len(gaps_df_contig['contig'])):
-                    plt.axvspan(int(gaps_df_contig['start'].iloc[i]), int(gaps_df_contig['stop'].iloc[i]), facecolor='0.2', alpha=0.5)
+                    plt.axvspan(int(gaps_df_contig['start'].iloc[i]), int(gaps_df_contig['stop'].iloc[i]), 
+                                facecolor='0.2', alpha=0.5)
 
         plt.savefig(output_folder+"/graphs/"+filename)
         plt.close()
@@ -107,14 +107,15 @@ def create_plot_coverage(starts, medians, classifications, contig_coverage, cont
     else:
         print("ERROR: there are "+len_pos+" positions for "+len_medians+" coverage values and "+len_class+" classifications !")
         with open(output_folder+"/"+contig_name+"_PLOT_ERROR.log", "w") as error_file:
-                error_file.write("ERROR: there are "+len_pos+" positions for "+len_medians+" coverage values and "+len_class+" classifications !")
-
+            error_file.write("ERROR: there are "+len_pos+" positions for "+len_medians+" coverage values and "+len_class+" classifications !")
 
 
 def get_windows_medians_contig(contig_df, expected_cov, window_size):
-    """Generate the classification (het, hom, outlier), the list of coverage medians, the starts and stops of each window in the contig.
+    """Generate the classification (het, hom, outlier), the list of coverage medians, the starts and stops of each 
+       window in the contig.
     Returns:
-        Four lists, two for the positions, one for the medians and one for the classifications. ('hom'=homozygous, 'het'=heterozygous, 'outlier'=possible outlier)
+        Four lists, two for the positions, one for the medians and one for the classifications. 
+        ('hom'=homozygous, 'het'=heterozygous, 'outlier'=possible outlier)
     """
     # Getting the last position of the contig, used to get the last window
     last_contig_position = contig_df['position'].iloc[-1] - 1
@@ -145,11 +146,10 @@ def get_windows_medians_contig(contig_df, expected_cov, window_size):
     return starts, stops, window_medians, classifications
 
 
-
 def create_bed_het_regions(contig_name, starts, stops, classifications, output_folder):
     """Create a bed file containing the regions detected as 'het' in the "classifications" list.
-    The regions comes from the "positions" list. The two lists should correspond (positions[i] should refer to classifications[i]).
-    Consecutive heterozygous windows are concatenated into one region.
+    The regions comes from the "positions" list. The two lists should correspond (positions[i] should refer to 
+    classifications[i]). Consecutive heterozygous windows are concatenated into one region.
     """
     i = 0
     start = 0
@@ -164,14 +164,15 @@ def create_bed_het_regions(contig_name, starts, stops, classifications, output_f
                     while(i < len(classifications)-1 and classifications[i+1] == 'het'):
                         i = i + 1
                     stop = stops[i]
-                    # Name of the scaffold is "chr_start_stop", to avoid issues with faidx later, that has issues with "chr:start-stop" Ids.
+                    # Name of the scaffold is "chr_start_stop", to avoid issues with faidx later, that has issues with 
+                    # "chr:start-stop" Ids.
                     name = contig_name+"_"+str(start)+"_"+str(stop)
                     het_bed_file.write(contig_name+"\t"+str(start)+"\t"+str(stop)+"\t"+name+"\n")
                 i = i + 1
         else:
             print("Different lengths for starts and classifications:"+str(len(starts))+" and "+str(len(classifications)))
             with open(output_folder+"/"+contig_name+"_BED_ERROR.log", "w") as error_file:
-                error_file.write("Different lengths for starts and classifications:"+str(len(starts))+" and "+str(len(classifications)))
+                error_file.write("Different lengths for starts and classifications: "+str(len(starts))+" and "+str(len(classifications)))
 
 
 # genome_expected_coverage is coming from the user "-c" or from computation of the genome mode
@@ -208,7 +209,6 @@ def detect_genome_mode(bed_dataframe):
     return genome_mode
 
 
-
 # Try and catch needed here due to bug in python with multiprocessing
 # ctrl-c makes the child unjoinable and pool creates new workers instead of exiting
 # global variables used because of multiprocessing (better way?).
@@ -226,7 +226,8 @@ def process_contig(contig_name):
         contig_df = BED_DF[BED_DF['contig'].isin([contig_name])]
         starts, stops, window_medians, classifications = get_windows_medians_contig(contig_df, GENOME_MODE, WINDOW_SIZE)
         if not(SKIP_PLOT):
-            create_plot_coverage(starts, window_medians, classifications, GENOME_MODE, contig_name, GAPS_DF, WINDOW_SIZE, OUTPUT_FOLDER)
+            create_plot_coverage(starts, window_medians, classifications, GENOME_MODE, contig_name, GAPS_DF, 
+                                 WINDOW_SIZE, OUTPUT_FOLDER)
         create_bed_het_regions(contig_name, starts, stops, classifications, OUTPUT_FOLDER)
     except KeyboardInterrupt:
         return

@@ -58,13 +58,13 @@ def filter_fasta_file(ID):
 
     if not ID_found:
         print("Warning: ID '"+str(ID)+"' not found.")
-    
+
     return ID_found
 
 
-
 def extract_and_blast(region, het_fasta, output_folder):
-    """Create commands for blasting a region (format "name:start-stop") against all the other het regions (needs a fasta file with all the het regions: "het_fasta").
+    """Create commands for blasting a region (format "name:start-stop") against all the other het regions (needs a fasta
+       file with all the het regions: "het_fasta").
     This will be use with multiprocessing
     Returns the commands (strings) to:
         Extract the het region from the het fasta.
@@ -76,7 +76,7 @@ def extract_and_blast(region, het_fasta, output_folder):
     region_temp_blastdb = output_folder+"/temp/"+region+"_temp.blastdb"
     # We remove the sequence from the list of het sequences to avoid self hit with blast.
     filtered_fasta = output_folder+"/temp/Het_regions_filtered_"+region+".fasta"
-    
+
     # List of commands that will be run in parallel
     extract = "samtools faidx "+het_fasta+" "+region+" -o "+region_temp_fasta
     makeBlastDB = "makeblastdb -in "+filtered_fasta+" -input_type fasta -out "+region_temp_blastdb+" -dbtype nucl"
@@ -100,8 +100,8 @@ def run_cmd(cmd):
 
 def get_assembly_coordinates_from_blast_results(region_name, blast_start, blast_stop):
     """Translate the blast coordinates (which are relative to the het. regions) to scaffold coordinates.
-    The blast hits are relative to the het region coordinates: "region_name start stop" (region_name is in the format: "scaffold_start_stop").
-    We do this because we want to remove sequences according to the scaffolds coordinates.
+    The blast hits are relative to the het region coordinates: "region_name start stop" (region_name is in the format: 
+    "scaffold_start_stop"). We do this because we want to remove sequences according to the scaffolds coordinates.
     Used by: "convert_region_coord_to_scaffold_coord"
     Returns:
         The scaffold name in the assembly ("scaffold_start_stop" becomes "scaffold").
@@ -137,9 +137,9 @@ def convert_region_coord_to_scaffold_coord(region_blasts_name, output_folder):
         with open(scaffold_coord_blasts_name, "w") as blasts_scaffolds:
             for blast in blasts_regions:
                 tabs = blast.split("\t")
-                    
-                # The QUERY should always be "start stop", but if there is a inverted alignment, the SUBJECT can be "stop   start".
-                # So we get the start by taking the min and the stop with the max
+
+                # The QUERY should always be "start stop", but if there is a inverted alignment, the SUBJECT can be 
+                # "stop   start". So we get the start by taking the min and the stop with the max.
                 query_start = int(tabs[6])
                 query_end = int(tabs[7])
 
@@ -184,7 +184,7 @@ def concatenate_blast_results(output_folder):
         The name of the file with concatenated blast results
     """
     region_blasts_name = output_folder+"/All_Blasts_region_coord.tab"
-  
+
     print("Concatenating the blast results to "+region_blasts_name+" ...")
     with open(region_blasts_name, "w") as blasts_regions:
         # Combination of find and cat with "+" to avoid issue of "argument list too long"
@@ -196,7 +196,7 @@ def concatenate_blast_results(output_folder):
         except Exception as e:
             print("Error for: " + " ".join(cmd))
             print("Exception:"+str(e))
-            sys.exit() 
+            sys.exit()
 
     return region_blasts_name
 
@@ -209,8 +209,8 @@ def do_blast_parallel(threads, output_folder):
 
     filter_cmds = list()
     extract_cmds = list()       # Extract the region
-    makeBlastDB_cmds = list()   # Create a copy of the heterozygous regions fasta without the region and create a database
-    megablast_cmds = list()     # Blast the region against the database
+    makeBlastDB_cmds = list()   # Create a blastdb from the heterozygous regions fasta (without the current region)
+    megablast_cmds = list()     # Blast the region against the database created previously
     n_process = 0
 
     pl = Pool(threads)
@@ -277,7 +277,7 @@ def do_blast_parallel(threads, output_folder):
         pl.terminate()
         pl.join()
         sys.exit()
-    
+
     ud.empty_folder(output_folder+"/temp/")
     pl.close()
     pl.join()
@@ -285,7 +285,8 @@ def do_blast_parallel(threads, output_folder):
 
 
 # Used from "DupLess.py", used after "detect_dupl_regions()" 
-def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_threshold, assembly, output_folder):
+def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_threshold, overlap_threshold, assembly, 
+                         output_folder):
     """Filter the blast results on identity and length.
     Write the valid blast hits to "duplications_to_remove.bed" and "discarded.regions"
     These files will contain the regions to remove from the assembly:
@@ -311,17 +312,22 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
 
     print("\nFiltering blast results...")
     toRemove_name = output_folder+"/toDiscard.bed"
-    process = subprocess.Popen(["touch", toRemove_name], stdout=subprocess.PIPE)
-    process.wait()
+    subprocess.Popen(["touch", toRemove_name], stdout=subprocess.PIPE).wait()
 
-    discarded_name = output_folder+"/toDiscard.regions"
-    process = subprocess.Popen(["touch", discarded_name], stdout=subprocess.PIPE)
-    process.wait()
+    toDiscard_name = output_folder+"/toDiscard.regions"
+    subprocess.Popen(["touch", toDiscard_name], stdout=subprocess.PIPE).wait()
+
+    toFilter_name = output_folder+"/toFilter.list"
+    subprocess.Popen(["touch", toFilter_name], stdout=subprocess.PIPE).wait()
 
     to_keep = list()
+
     with open(blast_filename, "r") as all_blasts:
         # For each duplicated pair, we write the coordinates to the ".bed" and ".regions" files
-        with open(toRemove_name, "a") as toRemoveHandle, open(discarded_name, "a") as discar_handle:
+        with open(toRemove_name, "a") as toRemove_handle, open(toDiscard_name, "a") as toDiscard_handle, open(toFilter_name, "a") as toFilter_handle:
+            #Write header for "toFilter.list" file
+            toFilter_handle.write('# List of contigs with a blast overlap of more than '+overlap_threshold+'% of their length')
+
             for blast in all_blasts:
                 tabs = blast.split("\t")
                 # tabs[2] contains the blast identity
@@ -349,19 +355,29 @@ def filter_blast_results(blast_filename, blast_identity_threshold, blast_length_
                     reversed_pair = region2+";"+region1
 
                     if(pair not in to_keep):
-                        # Instead of randomly removing heterozygous regions, we remove regions from the smallest contig, this avoid introducing too many misassemblies,
-                        # indeed, sometimes the duplication is a small contig that maps to part of a big one: it is better to remove a small contig that removing the middle of a large one.
-                        # This will reduce the chance of cutting a gene in half and hence downgrading the resulting assembly quality.
+                        # Instead of randomly removing heterozygous regions, we remove regions from the smallest contig,
+                        # this reduces the introduction of misassemblies, indeed, sometimes the duplication is a small 
+                        # contig that maps to part of a big one: it is better to remove a small contig that removing the
+                        # middle of a large one. This will reduce the chance of cutting a gene in half and hence 
+                        # downgrading the resulting assembly quality.
                         if(q_length < s_length):
-                            toRemoveHandle.write(query_name+"\t"+str(query_start)+"\t"+str(query_end)+"\n")    
-                            discar_handle.write(query_name+":"+str(query_start)+"-"+str(query_end)+"\n")
+                            toRemove_handle.write(query_name+"\t"+str(query_start)+"\t"+str(query_end)+"\n")
+                            toDiscard_handle.write(query_name+":"+str(query_start)+"-"+str(query_end)+"\n")
+                            # If the duplication covers more than overlap_threshold % of contig we filter it
+                            if(check_dup_contig_overlap(query_start, query_end, q_length, overlap_threshold)):
+                                toFilter_handle.write(query_name)
+                                toFilter_handle.write("\n")
                         else:
-                            toRemoveHandle.write(subject_name+"\t"+str(subject_start)+"\t"+str(subject_end)+"\n")
-                            discar_handle.write(subject_name+":"+str(subject_start)+"-"+str(subject_end)+"\n")
+                            toRemove_handle.write(subject_name+"\t"+str(subject_start)+"\t"+str(subject_end)+"\n")
+                            toDiscard_handle.write(subject_name+":"+str(subject_start)+"-"+str(subject_end)+"\n")
+                            # If the duplication covers more than overlap_threshold % of contig we filter it
+                            if(check_dup_contig_overlap(subject_start, subject_end, s_length, overlap_threshold)):
+                                toFilter_handle.write(subject_name)
+                                toFilter_handle.write("\n")
 
                         to_keep.append(reversed_pair)
 
-    return(toRemove_name, discarded_name)
+    return(toRemove_name, toDiscard_name, toFilter_name)
 
 
 def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
@@ -380,7 +396,7 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
     extract_heterozygous_regions(assembly_name, het_bed, output_folder)
 
     # bedtools before v2.27(?) adds the region to the fasta header during getfasta
-    # Checks if bedtools < 2.27 and remove 
+    # Checks if bedtools < 2.27 and remove
     if(ud.check_old_bedtools_version()):
         # The backup extension is required for Mac OS ("-i 'backup' -e" should make it work on both GNU and Mac)
         cmd = "sed -i'.dupless_sed_backup' -e 's/::.*//g' " + HET_FASTA_NAME
@@ -402,7 +418,7 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
     print("Blasting each heterozygous regions against the others, this could take a while....")
     do_blast_parallel(nbThreads, output_folder)
     print("Blast done !\n")
-    
+
     # Concatenate the blast results and convert blast coordinates from het regions to coordinates on scaffolds
     region_blasts_name = concatenate_blast_results(output_folder)
     print("Blast files concatenated to: "+region_blasts_name)
@@ -413,4 +429,21 @@ def detect_dupl_regions(assembly_name, het_bed, output_folder, nbThreads):
     print("Blast files with scaffold coordinates written to: "+blast_output+"\n")
 
     return blast_output
-    
+
+
+def check_dup_contig_overlap(blast_start, blast_end, contig_len, threshold):
+    """ Checks if the blast hit covers a certain amount of the contig length
+    """
+    overlap = 0
+    blast_len = blast_end - blast_start
+
+    if(contig_len != 0):
+        overlap = float(blast_len) / float(contig_len) * 100
+    # In case the conti haslength 0, technically, the overlap is 100%
+    else:
+        overlap = 100
+
+    if(overlap > threshold):
+        return True
+    else:
+        return False
